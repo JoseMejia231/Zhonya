@@ -33,4 +33,12 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Fix for centering date inputs on iOS/Safari */
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: center;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    margin-left: -12px;
+  }
 }
