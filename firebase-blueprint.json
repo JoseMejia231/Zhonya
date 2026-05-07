@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier." },
+        "amount": { "type": "number", "description": "Amount of the transaction." },
+        "type": { "type": "string", "enum": ["income", "expense"], "description": "Type of transaction." },
+        "category": { "type": "string", "description": "Category of the transaction." },
+        "description": { "type": "string", "description": "Description of the transaction." },
+        "date": { "type": "string", "format": "date-time", "description": "ISO 8601 date string." },
+        "uid": { "type": "string", "description": "Owner's user ID." }
+      },
+      "required": ["id", "amount", "type", "category", "date", "uid"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User preferences and settings.",
+      "type": "object",
+      "properties": {
+        "currency": { "type": "string", "description": "Preferred currency code." },
+        "theme": { "type": "string", "enum": ["light", "dark"], "description": "UI theme." },
+        "categories": { "type": "array", "items": { "type": "string" }, "description": "Custom categories." }
+      },
+      "required": ["currency", "theme", "categories"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User's financial transactions."
+    },
+    "/users/{userId}/settings/current": {
+      "schema": "UserSettings",
+      "description": "User's application settings."
+    }
+  }
+}

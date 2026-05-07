@@ -1,0 +1,192 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}/transactions/{transactionId}
+    // Document ID: transactionId (random string)
+    // Fields:
+    //   - id: string (required) - unique identifier
+    //   - amount: number (required) - positive amount
+    //   - type: string (required, 'income' or 'expense')
+    //   - category: string (required)
+    //   - description: string (optional)
+    //   - date: string (required, ISO 8601 format)
+    //   - uid: string (required) - owner's user ID
+    //
+    // Collection: /users/{userId}/settings/current
+    // Document ID: 'current'
+    // Fields:
+    //   - currency: string (required)
+    //   - theme: string (required, 'light' or 'dark')
+    //   - categories: list (required, strings)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidTransaction(data) {
+      return hasRequiredFields(['id', 'amount', 'type', 'category', 'date', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'amount', 'type', 'category', 'description', 'date', 'uid']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.amount is number && data.amount >= 0 &&
+             data.type in ['income', 'expense'] &&
+             data.category is string && data.category.size() > 0 && data.category.size() < 50 &&
+             (!('description' in data) || (data.description is string && data.description.size() < 200)) &&
+             isValidDateString(data.date) &&
+             data.uid == request.auth.uid;
+    }
+
+    function isValidSettings(data) {
+      return hasRequiredFields(['currency', 'theme', 'categories']) &&
+             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'budgets']) &&
+             data.currency is string && data.currency.size() > 0 && data.currency.size() < 10 &&
+             data.theme in ['light', 'dark'] &&
+             data.categories is list && data.categories.size() < 50 &&
+             (!('budgets' in data) || (data.budgets is map && data.budgets.size() < 60));
+    }
+
+    function isValidRecurring(data) {
+      return hasRequiredFields(['id', 'uid', 'name', 'amount', 'category', 'type',
+                                 'frequency', 'notifyTime', 'enabled', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'uid', 'name', 'amount', 'category', 'type',
+                                  'frequency', 'dayOfMonth', 'daysOfWeek', 'notifyTime',
+                                  'enabled', 'createdAt', 'lastNotifiedKey']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.uid == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 80 &&
+             data.amount is number && data.amount >= 0 &&
+             data.category is string && data.category.size() > 0 && data.category.size() < 50 &&
+             data.type in ['income', 'expense'] &&
+             data.frequency in ['daily', 'weekly', 'monthly'] &&
+             data.notifyTime is string && data.notifyTime.matches('^[0-2][0-9]:[0-5][0-9]$') &&
+             (
+               (data.frequency == 'monthly' && data.dayOfMonth is number &&
+                data.dayOfMonth >= 1 && data.dayOfMonth <= 31 && !('daysOfWeek' in data)) ||
+               (data.frequency == 'weekly' && data.daysOfWeek is list &&
+                data.daysOfWeek.size() >= 1 && data.daysOfWeek.size() <= 7 &&
+                !('dayOfMonth' in data)) ||
+               (data.frequency == 'daily' && !('dayOfMonth' in data) && !('daysOfWeek' in data))
+             ) &&
+             data.enabled is bool &&
+             isValidDateString(data.createdAt) &&
+             (!('lastNotifiedKey' in data) ||
+              (data.lastNotifiedKey is string &&
+               data.lastNotifiedKey.matches('^\\d{4}-\\d{2}(-\\d{2})?$')));
+    }
+
+    function isValidWheelSlice(s) {
+      return s is map &&
+             s.keys().hasAll(['id', 'label']) &&
+             s.keys().hasOnly(['id', 'label', 'value', 'category', 'weight']) &&
+             s.id is string && s.id.size() > 0 && s.id.size() < 100 &&
+             s.label is string && s.label.size() > 0 && s.label.size() < 60 &&
+             (!('value' in s) || (s.value is number && s.value >= 0)) &&
+             (!('category' in s) || (s.category is string && s.category.size() < 50)) &&
+             (!('weight' in s) || (s.weight is number && s.weight >= 0 && s.weight <= 1000));
+    }
+
+    function isValidWheel(data) {
+      return hasRequiredFields(['id', 'uid', 'title', 'mode', 'slices', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'mode', 'txType', 'slices',
+                                  'createdAt', 'lastSpunAt', 'lastResultId']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 80 &&
+             data.mode in ['decision', 'transaction'] &&
+             (!('txType' in data) || data.txType in ['income', 'expense']) &&
+             data.slices is list && data.slices.size() >= 2 && data.slices.size() <= 24 &&
+             isValidDateString(data.createdAt) &&
+             (!('lastSpunAt' in data) || isValidDateString(data.lastSpunAt)) &&
+             (!('lastResultId' in data) ||
+              (data.lastResultId is string && data.lastResultId.size() < 100));
+    }
+
+    function isValidPushToken(data) {
+      return hasRequiredFields(['token', 'createdAt']) &&
+             data.keys().hasOnly(['token', 'createdAt', 'userAgent']) &&
+             data.token is string && data.token.size() > 0 && data.token.size() < 500 &&
+             isValidDateString(data.createdAt) &&
+             (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() < 300));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidTransaction(request.resource.data);
+        allow update: if isOwner(userId) && isValidTransaction(request.resource.data) && 
+                         request.resource.data.uid == resource.data.uid;
+        allow delete: if isOwner(userId);
+      }
+
+      match /settings/current {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSettings(request.resource.data);
+        allow update: if isOwner(userId) && isValidSettings(request.resource.data);
+      }
+
+      match /recurringExpenses/{recurringId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidRecurring(request.resource.data);
+        allow update: if isOwner(userId) && isValidRecurring(request.resource.data) &&
+                         request.resource.data.uid == resource.data.uid;
+        allow delete: if isOwner(userId);
+      }
+
+      match /pushTokens/{token} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidPushToken(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      match /wheels/{wheelId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidWheel(request.resource.data);
+        allow update: if isOwner(userId) && isValidWheel(request.resource.data) &&
+                         request.resource.data.uid == resource.data.uid;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

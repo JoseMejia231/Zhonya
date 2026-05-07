@@ -1,0 +1,5 @@
+{
+  "name": "ZenCash Cloud",
+  "description": "Un rastreador financiero minimalista y seguro con sincronización en la nube mediante Firebase y autenticación de Google.",
+  "requestFramePermissions": []
+}
