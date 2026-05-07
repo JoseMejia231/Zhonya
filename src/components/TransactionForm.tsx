@@ -161,8 +161,8 @@ export const TransactionForm: React.FC = () => {
 
         {/* Date + Description grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
+          <div className="flex flex-col">
+            <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-center mb-1">
               Fecha
             </label>
             <input
@@ -170,11 +170,11 @@ export const TransactionForm: React.FC = () => {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm num"
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm text-center num"
             />
           </div>
-          <div>
-            <label htmlFor="tx-desc" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
+          <div className="flex flex-col">
+            <label htmlFor="tx-desc" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-center mb-1">
               Nota
             </label>
             <input
@@ -184,7 +184,7 @@ export const TransactionForm: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Opcional"
               maxLength={60}
-              className="mt-1 w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm"
+              className="w-full px-3 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm text-center"
             />
           </div>
         </div>
