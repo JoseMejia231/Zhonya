@@ -1,15 +1,5 @@
 {
   "projects": {
-    "default": "zencash-app"
-  },
-  "targets": {
-    "zencash-app": {
-      "hosting": {
-        "zencash-app": [
-          "zencash-app-67503"
-        ]
-      }
-    }
-  },
-  "etags": {}
+    "default": "zhonyas-61c6f"
+  }
 }
