@@ -128,7 +128,7 @@ export const sendRecurringReminders = onSchedule(
       if (!userPath) continue;
 
       const tokensSnap = await userPath.collection('pushTokens').get();
-      const tokens = tokensSnap.docs.map((d) => d.id);
+      const tokens = tokensSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => d.id);
 
       const verb = rec.type === 'income' ? 'Ingreso' : 'Pago';
       const formattedAmount = new Intl.NumberFormat('es', {
@@ -171,7 +171,7 @@ export const sendRecurringReminders = onSchedule(
         sent += response.successCount;
 
         const stale: Promise<unknown>[] = [];
-        response.responses.forEach((r, idx) => {
+        response.responses.forEach((r: admin.messaging.SendResponse, idx: number) => {
           if (!r.success) {
             const code = r.error?.code ?? '';
             if (
@@ -204,7 +204,7 @@ export const sendRecurringReminders = onSchedule(
  */
 export const debugZencash = onRequest(
   { region: 'us-central1', cors: true },
-  async (req, res) => {
+  async (req: any, res: any) => {
     if (req.query.token !== DEBUG_TOKEN) {
       res.status(401).send('forbidden');
       return;
@@ -212,7 +212,7 @@ export const debugZencash = onRequest(
 
     try {
       const recurringSnap = await db.collectionGroup('recurringExpenses').get();
-      const recurring = recurringSnap.docs.map((d) => {
+      const recurring = recurringSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => {
         const data = d.data();
         return {
           path: d.ref.path,
@@ -227,7 +227,7 @@ export const debugZencash = onRequest(
       });
 
       const tokensSnap = await db.collectionGroup('pushTokens').get();
-      const tokens = tokensSnap.docs.map((d) => ({
+      const tokens = tokensSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => ({
         id: d.id,
         path: d.ref.path,
         userAgent: (d.data().userAgent || '').slice(0, 80),
@@ -239,7 +239,7 @@ export const debugZencash = onRequest(
       // Forzar envío de push de prueba a TODOS los tokens si ?fire=1
       let fireResult: unknown = null;
       if (req.query.fire === '1') {
-        const tokenIds = tokens.map((t) => t.id);
+        const tokenIds = tokens.map((t: {id: string; path: string; userAgent: string; createdAt: any}) => t.id);
         const minimal = req.query.minimal === '1';
         const response = await messaging.sendEachForMulticast({
           tokens: tokenIds,
@@ -264,7 +264,7 @@ export const debugZencash = onRequest(
         fireResult = {
           successCount: response.successCount,
           failureCount: response.failureCount,
-          responses: response.responses.map((r, i) => ({
+          responses: response.responses.map((r: admin.messaging.SendResponse, i: number) => ({
             tokenIndex: i,
             success: r.success,
             messageId: r.messageId ?? null,
@@ -285,7 +285,7 @@ export const debugZencash = onRequest(
           // Borrar en lotes de 400 para no exceder el límite de batch.
           for (let i = 0; i < snap.docs.length; i += 400) {
             const batch = db.batch();
-            snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+            snap.docs.slice(i, i + 400).forEach((d: FirebaseFirestore.QueryDocumentSnapshot) => batch.delete(d.ref));
             await batch.commit();
           }
         }
@@ -294,7 +294,7 @@ export const debugZencash = onRequest(
         counts['settings'] = settingsSnap.size;
         for (let i = 0; i < settingsSnap.docs.length; i += 400) {
           const batch = db.batch();
-          settingsSnap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+          settingsSnap.docs.slice(i, i + 400).forEach((d: FirebaseFirestore.QueryDocumentSnapshot) => batch.delete(d.ref));
           await batch.commit();
         }
         wipeResult = { deleted: counts };
