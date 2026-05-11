@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { LogOut, Cloud, Tag, Coins, ChevronRight, Check } from 'lucide-react';
+import { LogOut, Cloud, Tag, Coins, ChevronRight, Check, TrendingUp, Repeat } from 'lucide-react';
 import { cn } from '../utils';
 import { CategoryManager } from './CategoryManager';
 import { BudgetsEditor } from './BudgetsEditor';

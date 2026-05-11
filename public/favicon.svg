@@ -1,13 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.14" />
+    </filter>
+  </defs>
   <rect width="512" height="512" rx="128" fill="#F5F5F0"/>
-  <circle cx="186" cy="178" r="56" fill="#836637" opacity="0.22"/>
-  <circle cx="326" cy="178" r="56" fill="#836637" opacity="0.22"/>
-  <circle cx="256" cy="276" r="134" fill="#836637"/>
-  <circle cx="256" cy="296" r="86" fill="#F5F5F0" opacity="0.96"/>
-  <circle cx="202" cy="238" r="18" fill="#F5F5F0"/>
-  <circle cx="310" cy="238" r="18" fill="#F5F5F0"/>
-  <path d="M228 298c13 15 28 22 28 22s15-7 28-22" fill="none" stroke="#836637" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M247 266h18" fill="none" stroke="#836637" stroke-width="18" stroke-linecap="round"/>
-  <path d="M188 386c26 29 62 45 68 45s42-16 68-45" fill="none" stroke="#836637" stroke-opacity="0.55" stroke-width="20" stroke-linecap="round"/>
-  <path d="M332 162c24 4 42 17 52 36" fill="none" stroke="#2D5A27" stroke-opacity="0.55" stroke-width="16" stroke-linecap="round"/>
+  <rect x="36" y="36" width="440" height="440" rx="100" fill="#FFFFFF" filter="url(#s)"/>
+  <circle cx="171" cy="196" r="58" fill="#836637"/>
+  <circle cx="341" cy="196" r="58" fill="#836637"/>
+  <circle cx="171" cy="196" r="37" fill="#F0D5A1"/>
+  <circle cx="341" cy="196" r="37" fill="#F0D5A1"/>
+  <path d="M256 107c89 0 161 72 161 161 0 72-38 128-98 158-17 9-41 14-63 14s-46-5-63-14c-60-30-98-86-98-158 0-89 72-161 161-161Z" fill="#836637"/>
+  <path d="M166 232c0-50 39-90 90-90s90 40 90 90c0 72-50 137-90 137s-90-65-90-137Z" fill="#F0D5A1"/>
+  <rect x="188" y="184" width="37" height="79" rx="18.5" fill="#836637"/>
+  <rect x="287" y="184" width="37" height="79" rx="18.5" fill="#836637"/>
+  <path d="M228 291c9 10 20 16 28 16s19-6 28-16" fill="none" stroke="#836637" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M254 259h4" fill="none" stroke="#836637" stroke-width="18" stroke-linecap="round"/>
+  <path d="M183 350c18 19 43 30 73 30s55-11 73-30" fill="none" stroke="#836637" stroke-opacity="0.65" stroke-width="18" stroke-linecap="round"/>
+  <path d="M303 118c19 4 34 15 42 31" fill="none" stroke="#2D5A27" stroke-width="14" stroke-linecap="round"/>
 </svg>

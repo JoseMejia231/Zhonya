@@ -21,7 +21,6 @@ import { RecentActivityCard } from './components/RecentActivityCard';
 import { Wheels } from './components/Wheels';
 import { DesktopTabs, MobileBottomNav, WheelBubble, Sidebar, TABS, TabId } from './components/TabBar';
 import { DashboardSkeleton } from './components/Skeleton';
-import { MonaMark } from './components/MonaMark';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -40,6 +39,22 @@ function readTabFromHash(): TabId {
   if (typeof window === 'undefined') return 'overview';
   const raw = window.location.hash.replace(/^#\/?/, '');
   return (VALID_TABS as string[]).includes(raw) ? (raw as TabId) : 'overview';
+}
+
+function getGreetingName(user: { displayName?: string | null; email?: string | null } | null): string {
+  const displayName = user?.displayName?.trim();
+  if (displayName) return displayName;
+
+  const email = user?.email?.trim();
+  if (!email) return 'Usuario';
+
+  const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  if (!localPart) return 'Usuario';
+
+  return localPart
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function AppContent() {
@@ -70,6 +85,7 @@ function AppContent() {
   const weekday = format(today, 'EEEE', { locale: es });
   const dateStr = format(today, "d 'de' MMMM", { locale: es });
   const sectionLabel = TABS.find((t) => t.id === tab)?.label ?? '';
+  const greetingName = getGreetingName(user);
 
   const sectionTransition = reduceMotion
     ? { duration: 0 }
@@ -88,7 +104,7 @@ function AppContent() {
                 {weekday}, {dateStr} de {today.getFullYear()}
               </p>
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-900">
-                Hola, José
+                Hola, {greetingName}
               </h1>
             </div>
 

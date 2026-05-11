@@ -10,6 +10,7 @@ import {
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '../utils';
+import { MonaMark } from './MonaMark';
 
 export type TabId =
   | 'overview'
@@ -66,8 +67,8 @@ interface TabBarProps {
 export const Sidebar: React.FC<TabBarProps> = ({ active, onChange }) => (
   <aside className="hidden sm:flex flex-col w-64 h-screen sticky top-0 bg-white border-r border-zinc-200/50 p-6">
     <div className="flex items-center gap-3 mb-10">
-      <div className="w-10 h-10 bg-white border border-zinc-200/70 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-        <img src="/logo.png" alt="MONA" className="w-7 h-7" onError={(e) => (e.currentTarget.src = 'https://api.dicebear.com/7.x/bottts/svg?seed=mona')} />
+      <div className="w-10 h-10 bg-white border border-zinc-200/70 rounded-xl flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
+        <MonaMark size={40} />
       </div>
       <h1 className="text-xl font-bold tracking-tight text-[#836637]">MONA</h1>
     </div>
