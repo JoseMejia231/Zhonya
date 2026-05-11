@@ -34,7 +34,7 @@ export const BudgetsEditor: React.FC = () => {
   };
 
   return (
-    <section className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
+    <section className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden">
       <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center">
           <Wallet size={15} className="text-zinc-700" />

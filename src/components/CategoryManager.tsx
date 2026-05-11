@@ -80,7 +80,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-zinc-900/40 backdrop-blur-sm z-40"
             aria-hidden
           />
           <motion.div
@@ -92,7 +92,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md z-50 bg-white rounded-3xl shadow-2xl shadow-black/20 border border-black/5 overflow-hidden max-h-[85vh] flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md z-50 bg-white rounded-3xl shadow-2xl shadow-black/20 border border-zinc-200/70 overflow-hidden max-h-[85vh] flex flex-col"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-zinc-100">
@@ -140,7 +140,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
                   type="submit"
                   whileTap={{ scale: 0.97 }}
                   disabled={!newCat.trim()}
-                  className="flex items-center gap-1 px-4 py-2.5 bg-black text-white rounded-xl text-sm font-semibold shadow-sm hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-zinc-900"
+                  className="flex items-center gap-1 px-4 py-2.5 bg-zinc-900 text-white rounded-xl text-sm font-semibold shadow-sm hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-zinc-900"
                 >
                   <Plus size={15} />
                   Agregar

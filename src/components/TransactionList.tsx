@@ -37,7 +37,7 @@ export const TransactionList: React.FC = () => {
   const totalCount = filteredTransactions.length;
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm h-full flex flex-col">
+    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-5 gap-3">
         <div>
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Actividad</h2>

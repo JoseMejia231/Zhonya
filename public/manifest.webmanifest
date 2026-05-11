@@ -1,13 +1,13 @@
 {
-  "name": "Zhonyas Wallet",
-  "short_name": "Zhonyas",
-  "description": "Zhonyas Wallet - Tu gestor financiero personal",
+  "name": "MONA",
+  "short_name": "MONA",
+  "description": "MONA - Tu gestor financiero personal",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F4F4F5",
-  "theme_color": "#000000",
+  "theme_color": "#F5F5F0",
   "lang": "es",
   "categories": ["finance", "productivity"],
   "icons": [

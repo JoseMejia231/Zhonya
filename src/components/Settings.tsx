@@ -24,124 +24,85 @@ export const Settings: React.FC = () => {
     .toUpperCase();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Profile card */}
-      <section className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm">
-        <div className="flex items-center gap-3">
-          {user?.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={user.displayName || 'Usuario'}
-              className="w-12 h-12 rounded-2xl border border-zinc-100 shrink-0 object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-2xl bg-zinc-900 text-white flex items-center justify-center text-sm font-bold shrink-0">
-              {initials}
-            </div>
-          )}
+      <section className="bg-white p-6 rounded-3xl border border-zinc-200/50 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-lg font-bold shrink-0 border border-emerald-100">
+            {initials}
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-zinc-900 truncate">
+            <h2 className="text-base font-bold text-zinc-900 uppercase tracking-tight">
               {user?.displayName || user?.email?.split('@')[0] || 'Usuario'}
+            </h2>
+            <p className="text-[10px] font-mono font-bold text-zinc-400 mt-0.5 tracking-widest uppercase">
+              Identidad de operador: #MN-01-{initials}
             </p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <Cloud size={11} className="text-emerald-500 shrink-0" />
-              <span className="text-[10px] font-medium text-emerald-600">Sincronizado</span>
-              <span className="text-[10px] text-zinc-300">·</span>
-              <span className="text-[10px] text-zinc-500 num">
-                {transactions.length} {transactions.length === 1 ? 'registro' : 'registros'}
-              </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Nodo de Preferencias */}
+      <section className="bg-white rounded-3xl border border-zinc-200/50 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-zinc-100">
+          <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+            Nodo de preferencias
+          </h3>
+        </div>
+        <div className="divide-y divide-zinc-50">
+          <PreferenceItem icon={<Coins size={14} />} label="Moneda Principal" value={settings.currency + " ($)"} />
+          <PreferenceItem icon={<TrendingUp size={14} />} label="Capa de Inteligencia" value="ACTIVA" color="text-emerald-600" />
+          <PreferenceItem icon={<Cloud size={14} />} label="Túnel de Privacidad" value="ENCRIPTADO" color="text-emerald-600" />
+          <PreferenceItem icon={<Repeat size={14} />} label="Distribución Cloud" value="SINCRONIZADO" color="text-emerald-600" />
+        </div>
+        <div className="p-4 bg-zinc-50/50">
+          <button className="w-full flex items-center justify-between px-4 py-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-[10px] font-bold tracking-widest text-emerald-800 uppercase hover:bg-emerald-100 transition-colors">
+            <div className="flex items-center gap-3">
+              <Repeat size={14} />
+              <span>Cambiar a Inglés</span>
             </div>
-          </div>
+            <span className="text-[9px] font-mono">EN</span>
+          </button>
         </div>
       </section>
 
-      {/* Currency */}
-      <section className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center">
-            <Coins size={15} className="text-zinc-700" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-900">Moneda</h3>
-            <p className="text-[11px] text-zinc-500">Se aplica a todos los movimientos.</p>
-          </div>
-        </div>
-        <ul className="border-t border-zinc-100">
-          {CURRENCIES.map((c) => {
-            const active = settings.currency === c.code;
-            return (
-              <li key={c.code}>
-                <button
-                  onClick={() => !active && updateSettings({ currency: c.code })}
-                  className={cn(
-                    'w-full flex items-center justify-between px-5 py-3.5 text-left transition-colors cursor-pointer focus:outline-none focus-visible:bg-zinc-50',
-                    'hover:bg-zinc-50 active:bg-zinc-100',
-                    active && 'bg-zinc-50'
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-semibold text-zinc-900 num w-10">
-                      {c.code}
-                    </span>
-                    <span className="text-sm text-zinc-700">{c.label}</span>
-                  </div>
-                  {active ? (
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-zinc-900 text-white">
-                      <Check size={12} strokeWidth={3} />
-                    </span>
-                  ) : (
-                    <span className="w-5 h-5 rounded-full border border-zinc-200" />
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {/* Categories */}
-      <section className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
+      {/* Actions */}
+      <div className="space-y-3">
         <button
           onClick={() => setCatOpen(true)}
-          className="w-full flex items-center gap-3 p-5 text-left hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:bg-zinc-50"
+          className="w-full flex items-center justify-between p-5 bg-white border border-zinc-200/50 rounded-3xl text-sm font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors"
         >
-          <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
-            <Tag size={15} className="text-zinc-700" />
+          <div className="flex items-center gap-3">
+            <Tag size={16} className="text-zinc-400" />
+            <span>Gestionar Categorías</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-zinc-900">Categorías</h3>
-            <p className="text-[11px] text-zinc-500 truncate">
-              {settings.categories.length} categorías · toca para gestionar
-            </p>
-          </div>
-          <ChevronRight size={16} className="text-zinc-400 shrink-0" />
+          <ChevronRight size={16} className="text-zinc-300" />
         </button>
-      </section>
 
-      <BudgetsEditor />
-
-      {/* Logout */}
-      <section className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
         <button
           onClick={logout}
-          className="w-full flex items-center gap-3 p-5 text-left hover:bg-red-50 active:bg-red-100 transition-colors cursor-pointer focus:outline-none focus-visible:bg-red-50 group"
+          className="w-full flex items-center justify-center p-5 bg-red-50 text-red-600 rounded-3xl text-[10px] font-bold tracking-[0.2em] uppercase border border-red-100 hover:bg-red-100 transition-all active:scale-[0.98]"
         >
-          <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center shrink-0 group-hover:bg-red-100 transition-colors">
-            <LogOut size={15} className="text-red-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-red-600">Cerrar sesión</h3>
-            <p className="text-[11px] text-zinc-500">Salir de tu cuenta en este dispositivo.</p>
-          </div>
+          Terminate Session
         </button>
-      </section>
+      </div>
 
-      <p className="text-center text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 pt-2">
-        Zhonyas Wallet · Cifrado E2E
+      <p className="text-center text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-400 pt-4">
+        MONA CORE · SECURED · {new Date().getFullYear()}
       </p>
 
       <CategoryManager open={catOpen} onClose={() => setCatOpen(false)} />
     </div>
   );
 };
+
+const PreferenceItem: React.FC<{ icon: React.ReactNode; label: string; value: string; color?: string }> = ({ icon, label, value, color = 'text-zinc-500' }) => (
+  <div className="flex items-center justify-between px-6 py-4">
+    <div className="flex items-center gap-3">
+      <div className="text-zinc-400">{icon}</div>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{label}</span>
+    </div>
+    <span className={cn("text-[10px] font-mono font-bold tracking-wider", color)}>{value}</span>
+  </div>
+);
+

@@ -30,7 +30,7 @@ export const RecurringConfirmModal: React.FC = () => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm"
           onClick={close}
         >
           <motion.div
@@ -95,7 +95,7 @@ export const RecurringConfirmModal: React.FC = () => {
               </button>
               <button
                 onClick={onConfirm}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-black text-white font-semibold text-sm shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 text-white font-semibold text-sm shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer"
               >
                 <Check size={15} strokeWidth={2.5} />
                 Sí, pagué

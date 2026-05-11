@@ -42,7 +42,7 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm"
+      className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm"
     >
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
@@ -85,7 +85,7 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
           <div className="h-56 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F4F4F5" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5dccb" />
                 <XAxis
                   dataKey="label"
                   axisLine={false}
@@ -100,12 +100,12 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
                   tickFormatter={(v) => formatCompact(v, settings.currency)}
                 />
                 <Tooltip
-                  cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                  cursor={{ fill: 'rgba(104, 142, 89, 0.04)' }}
                   contentStyle={{
                     backgroundColor: '#fff',
-                    border: '1px solid #E4E4E7',
+                    border: '1px solid #e5dccb',
                     borderRadius: '12px',
-                    boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.08)',
+                    boxShadow: '0 10px 25px -5px rgb(75 65 51 / 0.10)',
                     fontSize: '11px',
                     padding: '8px 12px',
                   }}
@@ -123,13 +123,13 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
                 />
                 <Bar
                   dataKey="Ingresos"
-                  fill="#10B981"
+                  fill="#688e59"
                   radius={[6, 6, 0, 0]}
                   animationDuration={600}
                 />
                 <Bar
                   dataKey="Gastos"
-                  fill="#18181B"
+                  fill="#4b5741"
                   radius={[6, 6, 0, 0]}
                   animationDuration={600}
                 />

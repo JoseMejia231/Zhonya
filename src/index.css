@@ -4,9 +4,64 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Warm ivory + olive theme inspired by the reference images. */
+  --color-zinc-50: #f5f5f0;
+  --color-zinc-100: #ede8dc;
+  --color-zinc-200: #ddd5c7;
+  --color-zinc-300: #c8bca8;
+  --color-zinc-400: #bdbdbd;
+  --color-zinc-500: #8f8269;
+  --color-zinc-600: #71644f;
+  --color-zinc-700: #5b4f3e;
+  --color-zinc-800: #4c4133;
+  --color-zinc-900: #4b5741;
+  --color-zinc-950: #283225;
+
+  --color-emerald-50: #eef5ea;
+  --color-emerald-100: #dbe8d2;
+  --color-emerald-200: #bfd4b7;
+  --color-emerald-300: #a4bf98;
+  --color-emerald-400: #7ea66f;
+  --color-emerald-500: #2d5a27;
+  --color-emerald-600: #254a20;
+  --color-emerald-700: #1f3c1b;
+  --color-emerald-800: #173014;
+  --color-emerald-900: #12250f;
+
+  --color-amber-50: #fbf5e6;
+  --color-amber-100: #f4e6c1;
+  --color-amber-200: #e5cb90;
+  --color-amber-300: #d4b15e;
+  --color-amber-400: #c39840;
+  --color-amber-500: #ad7d2b;
+  --color-amber-600: #936620;
+  --color-amber-700: #74501a;
+  --color-amber-800: #563b14;
+  --color-amber-900: #3d290f;
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    color: var(--color-zinc-900);
+    background:
+      radial-gradient(circle at 12% 8%, rgba(168, 218, 220, 0.22), transparent 24%),
+      radial-gradient(circle at 88% 10%, rgba(45, 90, 39, 0.14), transparent 20%),
+      radial-gradient(circle at 82% 88%, rgba(131, 102, 55, 0.08), transparent 24%),
+      var(--color-zinc-50);
+  }
+
+  ::selection {
+    background: var(--color-zinc-900);
+    color: #fff;
+  }
+
   .num {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "cv11" 1;
@@ -19,11 +74,11 @@
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(75, 87, 65, 0.16);
     border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.1);
+    background: rgba(75, 87, 65, 0.24);
   }
   
   .no-scrollbar::-webkit-scrollbar {
@@ -32,13 +87,5 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
-  }
-
-  /* Fix for centering date inputs on iOS/Safari */
-  input[type="date"]::-webkit-date-and-time-value {
-    text-align: center;
-  }
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    margin-left: -12px;
   }
 }

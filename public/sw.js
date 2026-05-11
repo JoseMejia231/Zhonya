@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'zencash-v1';
+const CACHE_VERSION = 'mona-v1';
 const PRECACHE_URLS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -72,7 +72,7 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || 'Zhonyas Wallet';
+  const title = (payload.notification && payload.notification.title) || 'MONA';
   const body = (payload.notification && payload.notification.body) || '';
   const data = payload.data || {};
   self.registration.showNotification(title, {
@@ -80,7 +80,7 @@ messaging.onBackgroundMessage((payload) => {
     icon: '/favicon.svg',
     badge: '/favicon.svg',
     data,
-    tag: data.tag || 'zencash-recurring',
+    tag: data.tag || 'mona-recurring',
     requireInteraction: true,
     actions: data.recurringId
       ? [
@@ -106,7 +106,7 @@ self.addEventListener('notificationclick', (event) => {
         if (open) {
           if (recurringId) {
             open.postMessage({
-              type: 'zencash-recurring-action',
+              type: 'mona-recurring-action',
               recurringId,
               periodKey,
               action,

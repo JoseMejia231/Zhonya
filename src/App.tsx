@@ -19,9 +19,9 @@ import { FixedFlowCard } from './components/FixedFlowCard';
 import { BudgetsCard } from './components/BudgetsCard';
 import { RecentActivityCard } from './components/RecentActivityCard';
 import { Wheels } from './components/Wheels';
-import { DesktopTabs, MobileBottomNav, WheelBubble, TABS, TabId } from './components/TabBar';
+import { DesktopTabs, MobileBottomNav, WheelBubble, Sidebar, TABS, TabId } from './components/TabBar';
 import { DashboardSkeleton } from './components/Skeleton';
-import { Wallet } from 'lucide-react';
+import { MonaMark } from './components/MonaMark';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -76,42 +76,37 @@ function AppContent() {
     : { duration: 0.22, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] };
 
   return (
-    <div className="min-h-dvh bg-[#F4F4F5] text-zinc-900 font-sans selection:bg-black selection:text-white pb-[calc(96px+env(safe-area-inset-bottom))] sm:pb-0">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-30 bg-[#F4F4F5]/85 backdrop-blur-xl border-b border-transparent sm:border-zinc-200/50 pt-[env(safe-area-inset-top)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-black rounded-xl flex items-center justify-center shadow-lg shadow-black/10 shrink-0">
-              <Wallet className="text-white" size={17} />
-            </div>
+    <div className="min-h-dvh bg-transparent text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white flex flex-col sm:flex-row pb-[calc(96px+env(safe-area-inset-bottom))] sm:pb-0">
+      <Sidebar active={tab} onChange={setTab} />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Sticky header / Top Bar */}
+        <header className="sticky top-0 z-30 bg-zinc-50/80 backdrop-blur-xl pt-[env(safe-area-inset-top)] border-b border-zinc-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-base sm:text-lg font-bold tracking-tight leading-tight">
-                <span className="sm:hidden">{sectionLabel}</span>
-                <span className="hidden sm:inline">Zhonyas Wallet</span>
-              </h1>
-              <p className="text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400 truncate capitalize">
-                <span className="sm:hidden">
-                  {weekday}, {dateStr}
-                </span>
-                <span className="hidden sm:inline">Finanzas con calma</span>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-1">
+                {weekday}, {dateStr} de {today.getFullYear()}
               </p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-900">
+                Hola, José
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <WheelBubble active={tab} onChange={setTab} />
+              
+              <button
+                onClick={() => setTab('transactions')}
+                className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-[10px] font-bold tracking-[0.1em] uppercase hover:bg-emerald-900 transition-colors shadow-sm"
+              >
+                <span className="text-base">+</span>
+                NUEVA ENTRADA
+              </button>
             </div>
           </div>
+        </header>
 
-          <WheelBubble active={tab} onChange={setTab} />
-
-          <DesktopTabs active={tab} onChange={setTab} />
-
-          <div className="hidden sm:block text-right shrink-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 capitalize">
-              {weekday}
-            </p>
-            <p className="text-sm font-semibold text-zinc-900 capitalize num">{dateStr}</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-8 sm:pb-12">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8">
         <AnimatePresence mode="wait">
           <motion.section
             key={tab}
@@ -142,15 +137,16 @@ function AppContent() {
             )}
           </motion.section>
         </AnimatePresence>
-      </main>
+        </main>
 
-      <footer className="hidden sm:flex max-w-7xl mx-auto px-6 py-6 border-t border-zinc-200/60 items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">
-        <span>© {today.getFullYear()} Zhonyas Wallet</span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-1 h-1 rounded-full bg-emerald-500" />
-          Cifrado E2E
-        </span>
-      </footer>
+        <footer className="hidden sm:flex max-w-7xl w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">
+          <span>© {today.getFullYear()} MONA</span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-1 h-1 rounded-full bg-emerald-500" />
+            CONECTADO · MONA CORE OPTIMIZED
+          </span>
+        </footer>
+      </div>
 
       <UndoToast />
       <PushToast />

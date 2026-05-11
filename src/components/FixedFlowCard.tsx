@@ -16,7 +16,7 @@ export const FixedFlowCard: React.FC = () => {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm flex items-center gap-4"
+        className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm flex items-center gap-4"
       >
         <div className="w-12 h-12 rounded-2xl bg-zinc-50 flex items-center justify-center shrink-0">
           <Repeat className="text-zinc-300" size={22} />
@@ -49,7 +49,7 @@ export const FixedFlowCard: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm"
+      className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>

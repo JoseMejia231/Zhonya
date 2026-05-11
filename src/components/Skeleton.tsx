@@ -15,7 +15,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({ className }) => (
 
 /** Esqueleto de la pantalla principal — tarjetas con la silueta del Resumen. */
 export const DashboardSkeleton: React.FC = () => (
-  <div className="min-h-dvh bg-[#F4F4F5] px-4 sm:px-6 pt-6 pb-24" aria-busy="true" aria-live="polite">
+  <div className="min-h-dvh bg-transparent px-4 sm:px-6 pt-6 pb-24" aria-busy="true" aria-live="polite">
     <div className="max-w-7xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

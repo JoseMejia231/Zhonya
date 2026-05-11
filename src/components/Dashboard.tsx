@@ -19,14 +19,13 @@ import { TrendingUp, TrendingDown, Minus as MinusIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const CHART_COLORS = [
-  '#18181B',
-  '#10B981',
-  '#EF4444',
-  '#71717A',
-  '#F59E0B',
-  '#3B82F6',
-  '#8B5CF6',
-  '#EC4899',
+  '#2D5A27', // Verde Bosque
+  '#836637', // Marrón Castaño
+  '#A8DADC', // Aguamarina
+  '#BDBDBD', // Gris Piedra
+  '#4B5741', // Verde Oscuro
+  '#71644f', // Marrón Oscuro
+  '#e5cb90', // Dorado Claro
 ];
 
 function useFinanceMetrics() {
@@ -125,22 +124,22 @@ export const BalanceHero: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="relative bg-black p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-xl shadow-black/20 overflow-hidden min-h-[200px]"
+      className="relative bg-emerald-800 p-6 sm:p-8 rounded-3xl text-white flex flex-col justify-between shadow-xl shadow-emerald-900/20 overflow-hidden min-h-[200px]"
     >
-      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/[0.04] blur-3xl pointer-events-none" />
+      <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-white/[0.06] blur-3xl pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-24 opacity-[0.18] pointer-events-none">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={sparklineData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="heroSpark" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10B981" stopOpacity={0.6} />
-                <stop offset="100%" stopColor="#10B981" stopOpacity={0} />
+                <stop offset="0%" stopColor="#688e59" stopOpacity={0.6} />
+                <stop offset="100%" stopColor="#688e59" stopOpacity={0} />
               </linearGradient>
             </defs>
             <Area
               type="monotone"
               dataKey="v"
-              stroke="#10B981"
+              stroke="#688e59"
               strokeWidth={1.5}
               fill="url(#heroSpark)"
               isAnimationActive={false}
@@ -200,7 +199,7 @@ export const ComparativeChart: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm flex flex-col"
+      className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm flex flex-col"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div className="min-w-0">
@@ -220,15 +219,15 @@ export const ComparativeChart: React.FC = () => {
           <AreaChart data={performanceData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
             <defs>
               <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10B981" stopOpacity={0.15} />
-                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                <stop offset="5%" stopColor="#688e59" stopOpacity={0.15} />
+                <stop offset="95%" stopColor="#688e59" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="colorEgresos" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.08} />
-                <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                <stop offset="5%" stopColor="#b7846d" stopOpacity={0.08} />
+                <stop offset="95%" stopColor="#b7846d" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F4F4F5" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5dccb" />
             <XAxis
               dataKey="date"
               axisLine={false}
@@ -245,9 +244,9 @@ export const ComparativeChart: React.FC = () => {
             <Tooltip
               contentStyle={{
                 backgroundColor: '#fff',
-                border: '1px solid #E4E4E7',
+                border: '1px solid #e5dccb',
                 borderRadius: '12px',
-                boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.08)',
+                boxShadow: '0 10px 25px -5px rgb(75 65 51 / 0.10)',
                 fontSize: '11px',
                 padding: '8px 12px',
               }}
@@ -257,7 +256,7 @@ export const ComparativeChart: React.FC = () => {
             <Area
               type="monotone"
               dataKey="ingresos"
-              stroke="#10B981"
+              stroke="#688e59"
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorIngresos)"
@@ -266,7 +265,7 @@ export const ComparativeChart: React.FC = () => {
             <Area
               type="monotone"
               dataKey="egresos"
-              stroke="#EF4444"
+              stroke="#b7846d"
               strokeWidth={1.5}
               strokeDasharray="4 4"
               fillOpacity={1}
@@ -288,7 +287,7 @@ export const CategoryBreakdown: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm flex flex-col"
+      className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm flex flex-col"
     >
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -328,8 +327,8 @@ export const CategoryBreakdown: React.FC = () => {
                   <Tooltip
                     contentStyle={{
                       borderRadius: '12px',
-                      border: '1px solid #E4E4E7',
-                      boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.08)',
+                      border: '1px solid #e5dccb',
+                      boxShadow: '0 10px 25px -5px rgb(75 65 51 / 0.10)',
                       fontSize: '11px',
                     }}
                     itemStyle={{ fontVariantNumeric: 'tabular-nums' }}
@@ -385,7 +384,7 @@ export const SavingsRate: React.FC = () => {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm flex flex-col justify-between"
+      className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm flex flex-col justify-between"
     >
       <div>
         <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
