@@ -1,0 +1,37 @@
+PALETA DE COLORES - MONA APP (WARM TECH)
+========================================
+
+Esta paleta utiliza el marrón sugerido para una identidad visual 
+premium, minimalista y orgánica, enfocada en finanzas rápidas.
+
+1. COLOR BASE / MARCA:
+   HEX: #836637
+   Uso: Logo, títulos principales, iconos y elementos de marca.
+   Efecto: Calidez, estabilidad y equilibrio.
+
+2. COLOR DE FONDO (BACKGROUND):
+   HEX: #F5F5F0
+   Uso: Fondo de la aplicación, fondo de tarjetas.
+   Efecto: Limpieza, claridad y minimalismo elegante.
+
+3. COLOR DE ACCIÓN (CTA):
+   HEX: #2D5A27
+   Uso: Botón de "Registro Rápido", botones de confirmación, saldos positivos.
+   Efecto: Confianza, éxito financiero y acción inmediata.
+
+4. COLOR SECUNDARIO / TECH:
+   HEX: #A8DADC
+   Uso: Gráficos sutiles, categorías de gasto, botones secundarios.
+   Efecto: Contraste moderno y refrescante.
+
+5. TEXTO SECUNDARIO / LÍNEAS:
+   HEX: #BDBDBD
+   Uso: Fechas, descripciones pequeñas y divisores de lista.
+   Efecto: Neutralidad para no distraer.
+
+----------------------------------------
+Sugerencia de combinación (UI):
+- Texto principal (#836637) sobre fondo (#F5F5F0).
+- Botón principal en Verde (#2D5A27) con texto blanco o crema.
+- Logo minimalista de la monita en (#836637).
+----------------------------------------
