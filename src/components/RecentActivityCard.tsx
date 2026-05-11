@@ -38,7 +38,7 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="bg-white p-5 rounded-3xl border border-black/5 shadow-sm"
+      className="bg-white p-5 rounded-3xl border border-zinc-200/70 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>

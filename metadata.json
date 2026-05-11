@@ -1,5 +1,6 @@
 {
-  "name": "ZenCash Cloud",
-  "description": "Un rastreador financiero minimalista y seguro con sincronización en la nube mediante Firebase y autenticación de Google.",
+  "name": "MONA",
+  "description": "MONA es una app financiera minimalista y segura con sincronizacion en la nube mediante Firebase y autenticacion de Google.",
   "requestFramePermissions": []
 }
+

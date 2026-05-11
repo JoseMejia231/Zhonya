@@ -126,7 +126,7 @@ export const Wheels: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <header className="bg-white rounded-3xl border border-black/5 shadow-sm p-5 flex items-start justify-between gap-3">
+      <header className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm p-5 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
             Ruletas
@@ -150,7 +150,7 @@ export const Wheels: React.FC = () => {
       </header>
 
       {wheels.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-black/5 shadow-sm p-8 text-center">
+        <div className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm p-8 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-50 mb-3">
             <Disc3 className="text-zinc-300" size={26} />
           </div>
@@ -170,7 +170,7 @@ export const Wheels: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -16 }}
                 transition={{ duration: 0.2 }}
-                className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden flex flex-col"
+                className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden flex flex-col"
               >
                 <button
                   onClick={() => {
@@ -553,7 +553,7 @@ const WheelSheet: React.FC<{ initial: SheetDraft; onClose: () => void }> = ({ in
         <button
           onClick={save}
           disabled={!valid || saving}
-          className="w-full py-3.5 rounded-2xl bg-black text-white font-semibold shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full py-3.5 rounded-2xl bg-zinc-900 text-white font-semibold shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 cursor-pointer"
         >
           <Check size={16} />
           {saving ? 'Guardando…' : isCreating ? 'Crear ruleta' : 'Guardar cambios'}
@@ -576,7 +576,7 @@ const SheetShell: React.FC<{
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     transition={{ duration: 0.2 }}
-    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm"
     onClick={onClose}
   >
     <motion.div
@@ -608,14 +608,14 @@ const SheetShell: React.FC<{
 // === Spin view ===
 
 const CHART_COLORS = [
-  '#18181B', // zinc-900
-  '#10B981', // emerald-500
-  '#EF4444', // red-500
-  '#F59E0B', // amber-500
-  '#3B82F6', // blue-500
-  '#8B5CF6', // violet-500
-  '#EC4899', // pink-500
-  '#71717A', // zinc-500
+  '#4b5741', // zinc-900
+  '#688e59', // emerald-500
+  '#b7846d', // red-500
+  '#c79a58', // amber-500
+  '#b9ad98', // blue-500
+  '#a5938d', // violet-500
+  '#c49ba0', // pink-500
+  '#8b7f70', // zinc-500
 ];
 
 interface PolarPoint {
@@ -812,8 +812,8 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
               );
             })}
             <circle cx={CX} cy={CY} r={R} fill="url(#wheel-shine)" pointerEvents="none" />
-            <circle cx={CX} cy={CY} r={20} fill="white" stroke="#18181B" strokeWidth={3} />
-            <circle cx={CX} cy={CY} r={6} fill="#18181B" />
+            <circle cx={CX} cy={CY} r={20} fill="white" stroke="#4b5741" strokeWidth={3} />
+            <circle cx={CX} cy={CY} r={6} fill="#4b5741" />
           </svg>
         </motion.div>
       </div>
@@ -857,7 +857,7 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
                     <button
                       onClick={handleCreateTx}
                       disabled={creating}
-                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-black text-white text-sm font-semibold shadow-lg shadow-black/20 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-50 transition-colors cursor-pointer"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 text-white text-sm font-semibold shadow-lg shadow-black/20 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       <Check size={14} strokeWidth={2.5} />
                       {creating ? 'Registrando…' : 'Registrar'}

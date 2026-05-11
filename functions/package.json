@@ -1,5 +1,5 @@
 {
-  "name": "zencash-functions",
+  "name": "mona-functions",
   "private": true,
   "scripts": {
     "build": "tsc",

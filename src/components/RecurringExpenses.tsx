@@ -94,7 +94,7 @@ export const RecurringExpenses: React.FC = () => {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="bg-black text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-black/20 overflow-hidden relative"
+          className="bg-zinc-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-black/20 overflow-hidden relative"
         >
           <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/[0.04] blur-3xl pointer-events-none" />
           <div className="relative z-10 flex items-center justify-between gap-3">
@@ -130,7 +130,7 @@ export const RecurringExpenses: React.FC = () => {
         </motion.div>
       )}
 
-      <div className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between p-5">
           <div>
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -391,7 +391,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -669,7 +669,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
           <button
             type="submit"
             disabled={saving}
-            className="w-full py-3.5 rounded-2xl bg-black text-white font-semibold shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 rounded-2xl bg-zinc-900 text-white font-semibold shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             <Check size={16} />
             {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear gasto fijo'}

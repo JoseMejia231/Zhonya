@@ -167,7 +167,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     onForegroundMessage((payload) => {
       if (payload.title || payload.body) {
         setInAppNotification({
-          title: payload.title || 'Zhonyas Wallet',
+          title: payload.title || 'MONA',
           body: payload.body || '',
         });
       }
@@ -391,7 +391,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!('serviceWorker' in navigator)) return;
     const handler = (event: MessageEvent) => {
       const msg = event.data;
-      if (!msg || msg.type !== 'zencash-recurring-action') return;
+      if (!msg || msg.type !== 'mona-recurring-action') return;
       const { recurringId, periodKey, action } = msg;
       if (!recurringId) return;
       if (action === 'paid') {

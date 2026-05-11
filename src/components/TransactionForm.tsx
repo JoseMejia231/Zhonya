@@ -49,7 +49,7 @@ export const TransactionForm: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-black/5 shadow-sm">
+    <div className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Nuevo</h2>
@@ -161,8 +161,8 @@ export const TransactionForm: React.FC = () => {
 
         {/* Date + Description grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col">
-            <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-center mb-1">
+          <div>
+            <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
               Fecha
             </label>
             <input
@@ -170,11 +170,11 @@ export const TransactionForm: React.FC = () => {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full px-1 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm tracking-tight text-center num"
+              className="mt-1 w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm num"
             />
           </div>
-          <div className="flex flex-col">
-            <label htmlFor="tx-desc" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 text-center mb-1">
+          <div>
+            <label htmlFor="tx-desc" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
               Nota
             </label>
             <input
@@ -184,7 +184,7 @@ export const TransactionForm: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Opcional"
               maxLength={60}
-              className="w-full px-1 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm text-center"
+              className="mt-1 w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm"
             />
           </div>
         </div>
@@ -196,7 +196,7 @@ export const TransactionForm: React.FC = () => {
             'w-full py-3.5 rounded-2xl font-semibold shadow-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white cursor-pointer flex items-center justify-center gap-2',
             justSaved
               ? 'bg-emerald-500 text-white shadow-emerald-500/25 focus-visible:ring-emerald-500'
-              : 'bg-black text-white hover:bg-zinc-800 shadow-black/10 focus-visible:ring-zinc-900'
+              : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-black/10 focus-visible:ring-zinc-900'
           )}
         >
           {justSaved ? (

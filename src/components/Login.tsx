@@ -1,7 +1,6 @@
 import React, { useState, useId, useMemo } from 'react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../firebase';
 import {
-  Wallet,
   Shield,
   Sparkles,
   TrendingUp,
@@ -15,6 +14,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { MonaMark } from './MonaMark';
 
 type Mode = 'signin' | 'signup';
 
@@ -63,7 +63,7 @@ export const Login: React.FC = () => {
   const nameId = useId();
 
   const brandId = useMemo(
-    () => 'ZC-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + new Date().getFullYear(),
+    () => 'MN-' + Math.random().toString(36).slice(2, 6).toUpperCase() + '-' + new Date().getFullYear(),
     []
   );
 
@@ -106,7 +106,7 @@ export const Login: React.FC = () => {
   const primaryCta = mode === 'signin' ? 'Iniciar sesión' : 'Crear cuenta';
 
   return (
-    <div className="min-h-dvh bg-[#F4F4F5] text-zinc-900 relative overflow-hidden selection:bg-black selection:text-white">
+    <div className="min-h-dvh bg-transparent text-zinc-900 relative overflow-hidden selection:bg-zinc-900 selection:text-white">
       {/* Subtle ambient accents — very low opacity to stay minimal */}
       {!reduceMotion && (
         <>
@@ -131,21 +131,21 @@ export const Login: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="hidden lg:flex flex-col justify-between p-12 xl:p-16 border-r border-black/5"
+          className="hidden lg:flex flex-col justify-between p-12 xl:p-16 border-r border-zinc-200/70"
         >
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-black flex items-center justify-center shadow-lg shadow-black/10">
-              <Wallet className="text-white" size={22} />
+            <div className="w-11 h-11 rounded-2xl bg-white border border-zinc-200/70 flex items-center justify-center shadow-sm">
+              <MonaMark size={28} />
             </div>
             <div>
-              <div className="text-lg font-bold tracking-tight">Zhonyas Wallet</div>
+              <div className="text-lg font-bold tracking-tight text-[#836637]">MONA</div>
               <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">{brandId}</div>
             </div>
           </div>
 
           <div className="space-y-10 max-w-lg">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-black/5 text-zinc-600 text-[11px] font-medium mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-zinc-200/70 text-zinc-600 text-[11px] font-medium mb-6">
                 <span className="relative flex h-1.5 w-1.5">
                   {!reduceMotion && (
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-60" />
@@ -160,7 +160,7 @@ export const Login: React.FC = () => {
                 <span className="text-zinc-400">sin el ruido.</span>
               </h1>
               <p className="mt-5 text-zinc-500 text-base leading-relaxed">
-                Zhonyas Wallet organiza tus ingresos y gastos en una interfaz clara, rápida y privada. Sin suscripciones
+                MONA organiza tus ingresos y gastos en una interfaz clara, rápida y privada. Sin suscripciones
                 confusas, sin dark patterns.
               </p>
             </div>
@@ -174,7 +174,7 @@ export const Login: React.FC = () => {
                   transition={{ delay: 0.25 + i * 0.08, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="flex items-start gap-4"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white border border-black/5 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200/70 flex items-center justify-center shrink-0">
                     <f.icon size={18} className="text-zinc-900" />
                   </div>
                   <div>
@@ -206,16 +206,16 @@ export const Login: React.FC = () => {
             {/* Mobile brand */}
             <div className="lg:hidden text-center mb-8">
               <div className="inline-flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center shadow-lg shadow-black/10">
-                  <Wallet className="text-white" size={22} />
+                <div className="w-12 h-12 rounded-2xl bg-white border border-zinc-200/70 flex items-center justify-center shadow-sm">
+                  <MonaMark size={28} />
                 </div>
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Zhonyas Wallet</h1>
+              <h1 className="text-3xl font-bold tracking-tight text-[#836637]">MONA</h1>
               <p className="text-sm text-zinc-500 mt-1">Tu gestor financiero personal</p>
             </div>
 
             {/* Card */}
-            <div className="relative bg-white border border-black/5 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/5">
+            <div className="relative bg-white border border-zinc-200/70 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/5">
               {/* Tab switcher with animated pill */}
               <div
                 role="tablist"
@@ -343,7 +343,7 @@ export const Login: React.FC = () => {
                   type="submit"
                   disabled={busy}
                   whileTap={busy ? undefined : { scale: 0.985 }}
-                  className="group relative w-full mt-2 py-3.5 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 bg-black hover:bg-zinc-800 shadow-lg shadow-black/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-zinc-900"
+                  className="group relative w-full mt-2 py-3.5 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 shadow-lg shadow-black/10 transition-colors disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white focus-visible:ring-zinc-900"
                 >
                   {submitting ? (
                     <Loader2 className="animate-spin" size={18} />

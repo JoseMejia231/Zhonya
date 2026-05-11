@@ -151,7 +151,7 @@ export const sendRecurringReminders = onSchedule(
           data: {
             recurringId: rec.id,
             periodKey: expectedKey,
-            tag: `zencash-recurring-${rec.id}-${expectedKey}`,
+            tag: `mona-recurring-${rec.id}-${expectedKey}`,
             type: rec.type,
             frequency: rec.frequency,
           },
@@ -244,13 +244,13 @@ export const debugZencash = onRequest(
         const response = await messaging.sendEachForMulticast({
           tokens: tokenIds,
           notification: {
-            title: '🧪 Zhonyas Wallet - Prueba',
+            title: '🧪 MONA - Prueba',
             body: 'Si ves esto, el push funciona.',
           },
           ...(minimal
             ? {}
             : {
-                data: { recurringId: 'debug-test', tag: 'zencash-debug' },
+                data: { recurringId: 'debug-test', tag: 'mona-debug' },
                 webpush: {
                   headers: { Urgency: 'high', TTL: '300' },
                   fcmOptions: { link: '/' },
