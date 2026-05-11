@@ -5,27 +5,27 @@ Esta paleta utiliza el marrón sugerido para una identidad visual
 premium, minimalista y orgánica, enfocada en finanzas rápidas.
 
 1. COLOR BASE / MARCA:
-   HEX: #836637
+   HEX: #836637 Marrón Castaño Dorado
    Uso: Logo, títulos principales, iconos y elementos de marca.
    Efecto: Calidez, estabilidad y equilibrio.
 
 2. COLOR DE FONDO (BACKGROUND):
-   HEX: #F5F5F0
+   HEX: #F5F5F0 Blanco Hueso / Crema Arena      
    Uso: Fondo de la aplicación, fondo de tarjetas.
    Efecto: Limpieza, claridad y minimalismo elegante.
 
 3. COLOR DE ACCIÓN (CTA):
-   HEX: #2D5A27
+   HEX: #2D5A27 Verde Bosque / Esmeralda Suave
    Uso: Botón de "Registro Rápido", botones de confirmación, saldos positivos.
    Efecto: Confianza, éxito financiero y acción inmediata.
 
 4. COLOR SECUNDARIO / TECH:
-   HEX: #A8DADC
+   HEX: #A8DADC Aguamarina Moderno / Cinnabar (para acentos gráficos)
    Uso: Gráficos sutiles, categorías de gasto, botones secundarios.
    Efecto: Contraste moderno y refrescante.
 
 5. TEXTO SECUNDARIO / LÍNEAS:
-   HEX: #BDBDBD
+   HEX: #BDBDBD Gris Piedra / Carboncillo Suave (para acentos gráficos) 
    Uso: Fechas, descripciones pequeñas y divisores de lista.
    Efecto: Neutralidad para no distraer.
 
