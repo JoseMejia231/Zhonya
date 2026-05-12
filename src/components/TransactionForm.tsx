@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionType } from '../types';
-import { Plus, Minus, Check } from 'lucide-react';
-import { cn, getCurrencySymbol } from '../utils';
+import { Plus, Minus, Check, ChevronDown } from 'lucide-react';
+import { cn } from '../utils';
 import { success } from '../utils/haptics';
 import { motion } from 'motion/react';
+
+const CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN'] as const;
 
 const todayLocalISO = () => {
   const d = new Date();
@@ -12,15 +14,13 @@ const todayLocalISO = () => {
 };
 
 export const TransactionForm: React.FC = () => {
-  const { addTransaction, settings } = useFinance();
+  const { addTransaction, settings, updateSettings } = useFinance();
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState(settings.categories[0]);
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayLocalISO());
   const [justSaved, setJustSaved] = useState(false);
-
-  const currencySymbol = getCurrencySymbol(settings.currency);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,15 +109,25 @@ export const TransactionForm: React.FC = () => {
           <label htmlFor="tx-amount" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
             Monto
           </label>
-          <div className="mt-1 flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl focus-within:border-zinc-900 focus-within:bg-white focus-within:ring-4 focus-within:ring-zinc-900/5 transition-all overflow-hidden">
-            <span
-              className={cn(
-                'pl-4 pr-2 text-2xl font-light select-none num transition-colors',
-                amount ? 'text-zinc-900' : 'text-zinc-300'
-              )}
-            >
-              {currencySymbol}
-            </span>
+          <div className="mt-1 flex items-stretch overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 transition-all focus-within:border-zinc-900 focus-within:bg-white focus-within:ring-4 focus-within:ring-zinc-900/5">
+            <div className="relative flex w-[6.8rem] shrink-0 items-center border-r border-zinc-200 bg-white/70">
+              <select
+                aria-label="Moneda"
+                value={settings.currency}
+                onChange={(e) => void updateSettings({ currency: e.target.value })}
+                className="h-full w-full appearance-none bg-transparent px-4 py-3.5 pr-8 text-[1.35rem] font-light uppercase tracking-tight text-zinc-900 focus:outline-none num"
+              >
+                {CURRENCIES.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-3 text-zinc-400"
+              />
+            </div>
             <input
               id="tx-amount"
               type="number"
@@ -126,7 +136,10 @@ export const TransactionForm: React.FC = () => {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              className="flex-1 min-w-0 pr-4 py-3.5 bg-transparent focus:outline-none text-2xl font-light num tracking-tight"
+              className={cn(
+                'flex-1 min-w-0 bg-transparent px-4 py-3.5 focus:outline-none text-[1.35rem] font-light num tracking-tight',
+                amount ? 'text-zinc-900' : 'text-zinc-300'
+              )}
               required
             />
           </div>

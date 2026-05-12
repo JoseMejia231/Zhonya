@@ -7,6 +7,8 @@ import {
   Repeat,
   Disc3,
   Settings as SettingsIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -63,50 +65,93 @@ interface TabBarProps {
   onChange: (id: TabId) => void;
 }
 
+interface SidebarProps extends TabBarProps {
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
+
 /** Sidebar for desktop layout. */
-export const Sidebar: React.FC<TabBarProps> = ({ active, onChange }) => (
-  <aside className="hidden sm:flex flex-col w-64 h-screen sticky top-0 bg-white border-r border-zinc-200/50 p-6">
-    <div className="flex items-center gap-3 mb-10">
-      <div className="w-10 h-10 bg-white border border-zinc-200/70 rounded-xl flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
+export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, onToggleCollapse }) => (
+  <aside
+    className={cn(
+      'hidden sm:flex flex-col sticky top-0 h-screen overflow-hidden bg-white/90 backdrop-blur-xl border-r border-zinc-200/60 py-4 transition-all duration-300 ease-out',
+      collapsed ? 'w-[92px] px-3' : 'w-[252px] px-5'
+    )}
+  >
+    <div
+      className={cn(
+        'mb-10 flex items-center px-1 pt-1 transition-all duration-300',
+        collapsed ? 'justify-center gap-0' : 'gap-3'
+      )}
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200/70 bg-white shadow-sm">
         <MonaMark size={40} />
       </div>
-      <h1 className="text-xl font-bold tracking-tight text-[#836637]">MONA</h1>
+      {!collapsed && <h1 className="text-xl font-bold tracking-[0.08em] text-[#7c6744]">MONA</h1>}
     </div>
 
-    <nav className="flex-1 space-y-1">
-      {TABS.map((tab) => {
+    <nav className="flex-1 space-y-2">
+      {TABS.filter((tab) => tab.id !== 'settings').map((tab) => {
         const Icon = tab.icon;
         const isActive = active === tab.id;
         return (
           <button
             key={tab.id}
+            type="button"
+            title={tab.label}
+            aria-label={tab.label}
             onClick={() => onChange(tab.id)}
             className={cn(
-              'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold tracking-widest transition-all cursor-pointer focus:outline-none uppercase',
+              'relative w-full cursor-pointer rounded-2xl text-xs font-bold uppercase tracking-[0.16em] transition-all focus:outline-none',
+              collapsed ? 'flex h-12 items-center justify-center px-0' : 'flex items-center gap-3 px-4 py-3',
               isActive
-                ? 'bg-emerald-50/80 text-emerald-700 shadow-sm'
+                ? 'bg-[#eef6f4] text-zinc-700 shadow-[0_10px_24px_rgba(27,31,35,0.05)]'
                 : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
             )}
           >
             <Icon size={18} strokeWidth={2.2} />
-            <span>{tab.label}</span>
-            {isActive && (
-              <motion.div
-                layoutId="sidebar-active-indicator"
-                className="ml-auto w-1 h-5 bg-emerald-500 rounded-full"
-              />
+            {!collapsed && <span>{tab.label}</span>}
+            {!collapsed && isActive && tab.id === 'overview' && (
+              <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[#2f5a29] shadow-sm">
+                1
+              </span>
             )}
           </button>
         );
       })}
     </nav>
 
-    <div className="mt-auto pt-6 border-t border-zinc-100 space-y-1">
-      <button className="w-full flex items-center gap-3 px-4 py-3 text-xs font-bold tracking-widest text-zinc-400 uppercase hover:text-zinc-600">
-        <div className="w-5 flex justify-center">
-          <div className="w-3 h-0.5 bg-zinc-300" />
+    <div className="mt-auto space-y-2 border-t border-zinc-100 pt-5">
+      <button
+        type="button"
+        title={collapsed ? 'Expandir' : 'Colapsar'}
+        aria-label={collapsed ? 'Expandir barra lateral' : 'Colapsar barra lateral'}
+        onClick={onToggleCollapse}
+        className={cn(
+          'w-full rounded-2xl text-xs font-bold uppercase tracking-[0.16em] text-zinc-400 transition-all hover:bg-zinc-50 hover:text-zinc-600',
+          collapsed ? 'flex items-center justify-center px-0 py-3' : 'flex items-center gap-3 px-4 py-3'
+        )}
+      >
+        <div className="flex w-5 justify-center">
+          {collapsed ? <PanelLeftOpen size={18} strokeWidth={2.2} /> : <PanelLeftClose size={18} strokeWidth={2.2} />}
         </div>
-        <span>COLAPSAR</span>
+        {!collapsed && <span>Colapsar</span>}
+      </button>
+      <button
+        type="button"
+        title="Configuración"
+        aria-label="Configuración"
+        onClick={() => onChange('settings')}
+        className={cn(
+          'w-full rounded-2xl text-xs font-bold uppercase tracking-[0.16em] transition-all',
+          collapsed ? 'flex items-center justify-center px-0 py-3' : 'flex items-center gap-3 px-4 py-3',
+          active === 'settings'
+            ? 'bg-[#eef6f4] text-zinc-700 shadow-[0_10px_24px_rgba(27,31,35,0.05)]'
+            : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+        )}
+      >
+        <SettingsIcon size={18} strokeWidth={2.2} />
+        {!collapsed && <span>Configuración</span>}
       </button>
     </div>
   </aside>
