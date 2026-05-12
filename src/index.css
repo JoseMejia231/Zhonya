@@ -90,4 +90,8 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .infinity-card {
+    clip-path: url(#infinity-path);
+  }
 }
