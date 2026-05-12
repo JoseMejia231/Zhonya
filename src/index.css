@@ -27,7 +27,6 @@
   --color-emerald-500: var(--color-action);
   --color-brand-light: #F0D5A1;
 
-
   --color-amber-50: #fbf5e6;
   --color-amber-100: #f4e6c1;
   --color-amber-200: #e5cb90;
@@ -41,12 +40,7 @@
 }
 
 @layer base {
-  html,
-  body,
-  #root {
-    min-height: 100%;
-  }
-
+  html, body, #root { min-height: 100%; }
   body {
     color: var(--color-zinc-900);
     background:
@@ -57,6 +51,7 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
+<<<<<<< HEAD
 
   ::selection {
     background: var(--color-zinc-900);
@@ -93,4 +88,210 @@
   .infinity-card {
     clip-path: url(#infinity-path);
   }
+=======
+  ::selection { background: var(--color-zinc-900); color: #fff; }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "cv11" 1; }
+  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(75, 87, 65, 0.16); border-radius: 10px; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+/* ============================================================
+   DARK MODE - REFINED COLORFUL THEME (LESS BLACK)
+   ============================================================ */
+
+.dark {
+  --color-bg-app: #0D120D; /* Bosque Nocturno Profundo */
+  --color-zinc-50: #151C15; /* Saturated Dark Forest */
+  --color-zinc-100: #1C261C;
+  --color-zinc-200: #2A362A;
+  --color-zinc-300: #404D40;
+  --color-zinc-400: #718071;
+  --color-zinc-500: #A1B0A1;
+  --color-zinc-600: #D4DCD4;
+  --color-zinc-700: #E4EAE4;
+  --color-zinc-800: #F4F6F4;
+  --color-zinc-900: #FFFFFF;
+
+  --color-brand: #D4B15E; /* Oro más cálido para contraste */
+  --color-action: #52C447; /* Verde vibrante */
+}
+
+.dark body {
+  background-color: #0D120D;
+  background-image: 
+    radial-gradient(circle at 5% 5%, rgba(82, 196, 71, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 95% 95%, rgba(212, 177, 94, 0.06) 0%, transparent 40%);
+  color: #FFFFFF;
+  background-attachment: fixed;
+}
+
+/* Text visibility in Dark Mode */
+.dark .text-zinc-900 { color: #FFFFFF !important; }
+.dark .text-zinc-800 { color: #F4F6F4 !important; }
+.dark .text-zinc-700 { color: #E4EAE4 !important; }
+.dark .text-zinc-600 { color: #D4DCD4 !important; }
+.dark .text-zinc-500 { color: #A1B0A1 !important; }
+.dark .text-zinc-400 { color: #718071 !important; }
+
+/* Surface & Border Overrides (Dark Forest tones) */
+.dark .bg-white {
+  background-color: #151C15 !important;
+  border-color: #2A362A !important;
+}
+
+.dark .bg-zinc-50 {
+  background-color: #1C261C !important;
+}
+
+.dark .bg-zinc-50\/50 {
+  background-color: rgba(21, 28, 21, 0.5) !important;
+}
+
+.dark .border-zinc-200, 
+.dark .border-zinc-100 {
+  border-color: #2A362A !important;
+}
+
+/* Sidebar - Deep Espresso Brown */
+.dark aside {
+  background-color: #1A1410 !important; /* Café Profundo */
+  border-right-color: #2A1F18 !important;
+}
+
+.dark aside .text-\[\#7c6744\] { color: #D4B15E !important; }
+
+.dark aside button { color: #A1B0A1 !important; }
+.dark aside button:hover {
+  background-color: rgba(212, 177, 94, 0.1) !important;
+  color: #FFFFFF !important;
+}
+
+/* Active Tab Styles */
+.dark aside button.bg-\[\#eef6f4\],
+.dark aside button.bg-\[var\(--color-brand\)\] {
+  background-color: #D4B15E !important;
+  color: #1A1410 !important;
+}
+
+.dark aside button.bg-\[\#eef6f4\] svg,
+.dark aside button.bg-\[var\(--color-brand\)\] svg {
+  stroke: #1A1410 !important;
+}
+
+.dark aside button.bg-\[var\(--color-brand\)\] span {
+  color: #1A1410 !important;
+}
+
+/* Fix Deletion & Danger states */
+.dark .hover\:bg-red-50:hover {
+  background-color: rgba(225, 29, 72, 0.15) !important;
+  color: #FF4D4D !important;
+}
+.dark .text-red-600 { color: #FF4D4D !important; }
+
+/* Brighten Greeting Header in Dark Mode */
+.dark .text-emerald-900 {
+  color: #A7F3D0 !important; /* Bright Mint Emerald */
+}
+
+/* Libro Operativo Dark Styling */
+.dark .libro-row {
+  background-color: #1A221A !important; 
+  border-color: #2D3A2D !important;
+  box-shadow: none !important;
+}
+
+.dark .libro-row p.text-\[\#554936\] {
+  color: #FFFFFF !important;
+}
+
+.dark .libro-row p.text-\[\#9d9687\],
+.dark .libro-row p.text-\[\#7c7361\],
+.dark .text-\[\#7c7361\] {
+  color: #A1B0A1 !important;
+}
+
+/* Fix Expand button in Libro Operativo */
+.dark .bg-\[\#f6f1e8\] {
+  background-color: rgba(212, 177, 94, 0.1) !important;
+  color: #D4B15E !important;
+  border-color: rgba(212, 177, 94, 0.2) !important;
+}
+
+/* Savings Rate Card (#dee4d8) */
+.dark .bg-\[\#dee4d8\] {
+  background-color: #1D261D !important;
+  border-color: #2D3A2D !important;
+}
+
+.dark .bg-\[\#dee4d8\] h3.text-\[\#2f5a29\],
+.dark .text-\[\#2f5a29\] {
+  color: #52C447 !important; /* Bright action green */
+}
+
+.dark .bg-\[\#dee4d8\] p.text-\[\#6a705e\],
+.dark .bg-\[\#dee4d8\] p.text-\[\#7d866f\] {
+  color: #A1B0A1 !important;
+}
+
+/* Notification Prompt & Commit Card Fixes */
+/* We want these to stay dark/saturated, not turn white */
+.dark .bg-zinc-900.shadow-xl {
+  background-color: #1A1410 !important; /* Espresso Dark */
+  color: #FFFFFF !important;
+}
+
+.dark .bg-zinc-900.shadow-xl .text-zinc-900 {
+  color: #FFFFFF !important;
+}
+
+.dark .bg-zinc-900.shadow-xl .bg-white {
+  background-color: #D4B15E !important; /* Gold button */
+  color: #1A1410 !important;
+}
+
+.dark .libro-icon.bg-\[\#ecf3e8\] {
+  background-color: rgba(82, 196, 71, 0.1) !important;
+  color: #52C447 !important;
+}
+
+.dark .libro-icon.bg-\[\#f7e4ea\] {
+  background-color: rgba(255, 77, 77, 0.1) !important;
+  color: #FF4D4D !important;
+}
+
+.dark .libro-row p.text-\[\#5a794f\] {
+  color: #52C447 !important;
+}
+
+.dark .libro-row p.text-\[\#806f64\] {
+  color: #FFB0B0 !important;
+}
+
+/* Global Button Contrast Fix */
+.dark .bg-zinc-900 {
+  background-color: #FFFFFF !important;
+  color: #0D120D !important;
+}
+.dark .bg-zinc-900.text-white,
+.dark .bg-zinc-900 .text-white {
+  color: #0D120D !important;
+}
+.dark .bg-zinc-900 svg { stroke: #0D120D !important; }
+
+/* Input/Select consistency */
+.dark input, .dark select {
+  background-color: #1D261D !important;
+  color: #FFFFFF !important;
+  border-color: #2A362A !important;
+}
+
+/* Maintain Logo Clarity */
+.dark .sidebar-logo-container {
+  background-color: white !important;
+  border-color: transparent !important;
+>>>>>>> d2c31e4 (Faltan cosas, no esta terminado)
 }
