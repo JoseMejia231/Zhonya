@@ -51,7 +51,6 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
-<<<<<<< HEAD
 
   ::selection {
     background: var(--color-zinc-900);
@@ -88,14 +87,6 @@
   .infinity-card {
     clip-path: url(#infinity-path);
   }
-=======
-  ::selection { background: var(--color-zinc-900); color: #fff; }
-  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "cv11" 1; }
-  .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-  .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-  .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(75, 87, 65, 0.16); border-radius: 10px; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
 /* ============================================================
@@ -293,5 +284,4 @@
 .dark .sidebar-logo-container {
   background-color: white !important;
   border-color: transparent !important;
->>>>>>> d2c31e4 (Faltan cosas, no esta terminado)
 }
