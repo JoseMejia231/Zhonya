@@ -5,12 +5,18 @@
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Warm ivory + olive theme inspired by the reference images. */
-  --color-zinc-50: #f5f5f0;
+  /* Official MONA App Palette */
+  --color-brand: #836637; /* Marrón Castaño Dorado */
+  --color-bg-app: #F5F5F0; /* Blanco Hueso / Crema Arena */
+  --color-action: #2D5A27; /* Verde Bosque */
+  --color-tech: #A8DADC; /* Aguamarina Moderno */
+  --color-secondary-text: #BDBDBD; /* Gris Piedra */
+
+  --color-zinc-50: var(--color-bg-app);
   --color-zinc-100: #ede8dc;
   --color-zinc-200: #ddd5c7;
   --color-zinc-300: #c8bca8;
-  --color-zinc-400: #bdbdbd;
+  --color-zinc-400: var(--color-secondary-text);
   --color-zinc-500: #8f8269;
   --color-zinc-600: #71644f;
   --color-zinc-700: #5b4f3e;
@@ -18,16 +24,9 @@
   --color-zinc-900: #4b5741;
   --color-zinc-950: #283225;
 
-  --color-emerald-50: #eef5ea;
-  --color-emerald-100: #dbe8d2;
-  --color-emerald-200: #bfd4b7;
-  --color-emerald-300: #a4bf98;
-  --color-emerald-400: #7ea66f;
-  --color-emerald-500: #2d5a27;
-  --color-emerald-600: #254a20;
-  --color-emerald-700: #1f3c1b;
-  --color-emerald-800: #173014;
-  --color-emerald-900: #12250f;
+  --color-emerald-500: var(--color-action);
+  --color-brand-light: #F0D5A1;
+
 
   --color-amber-50: #fbf5e6;
   --color-amber-100: #f4e6c1;
@@ -51,10 +50,10 @@
   body {
     color: var(--color-zinc-900);
     background:
-      radial-gradient(circle at 10% 10%, rgba(45, 90, 39, 0.06), transparent 18%),
-      radial-gradient(circle at 88% 12%, rgba(168, 218, 220, 0.18), transparent 20%),
-      radial-gradient(circle at 82% 88%, rgba(131, 102, 55, 0.06), transparent 20%),
-      linear-gradient(180deg, #fbfaf6 0%, #f4f1e8 100%);
+      radial-gradient(circle at 10% 10%, rgba(45, 90, 39, 0.08), transparent 25%),
+      radial-gradient(circle at 90% 15%, rgba(168, 218, 220, 0.15), transparent 25%),
+      radial-gradient(circle at 80% 85%, rgba(131, 102, 55, 0.08), transparent 25%),
+      linear-gradient(180deg, var(--color-bg-app) 0%, #ede8dc 100%);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
