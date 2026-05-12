@@ -335,12 +335,12 @@ export const LibroOperativo: React.FC = () => {
           return (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-[#efe8da] bg-[#fbfaf6] px-3 py-2.5 shadow-[0_8px_22px_rgba(27,22,10,0.03)]"
+              className="libro-row flex items-center justify-between gap-3 rounded-2xl border border-[#efe8da] bg-[#fbfaf6] px-3 py-2.5 shadow-[0_8px_22px_rgba(27,22,10,0.03)] transition-colors"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <div
                   className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-xl',
+                    'libro-icon flex h-10 w-10 items-center justify-center rounded-xl',
                     isIncome ? 'bg-[#ecf3e8] text-[#4c6943]' : 'bg-[#f7e4ea] text-[#c27a8c]'
                   )}
                 >

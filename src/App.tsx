@@ -156,7 +156,7 @@ function AppContent() {
               </div>
             )}
             {tab === 'settings' && (
-              <div className="max-w-5xl mx-auto">
+              <div className="w-full">
                 <Settings />
               </div>
             )}
