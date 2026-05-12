@@ -4,8 +4,12 @@ import {
   BalanceHero,
   ComparativeChart,
   CategoryBreakdown,
-  SavingsRate,
-} from './components/Dashboard';
+  StatCard,
+  SavingsRateCard,
+  LibroOperativo,
+  IntuicionAutonoma,
+  ProjectProgress,
+} from './components/ReferenceDashboard';
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
 import { Settings } from './components/Settings';
@@ -21,6 +25,7 @@ import { RecentActivityCard } from './components/RecentActivityCard';
 import { Wheels } from './components/Wheels';
 import { DesktopTabs, MobileBottomNav, WheelBubble, Sidebar, TABS, TabId } from './components/TabBar';
 import { DashboardSkeleton } from './components/Skeleton';
+import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -46,10 +51,10 @@ function getGreetingName(user: { displayName?: string | null; email?: string | n
   if (displayName) return displayName;
 
   const email = user?.email?.trim();
-  if (!email) return 'Usuario';
+  if (!email) return 'José';
 
   const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
-  if (!localPart) return 'Usuario';
+  if (!localPart) return 'José';
 
   return localPart
     .split(/\s+/)
@@ -60,9 +65,9 @@ function getGreetingName(user: { displayName?: string | null; email?: string | n
 function AppContent() {
   const { user, loading } = useFinance();
   const [tab, setTabState] = useState<TabId>(readTabFromHash);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const reduceMotion = useReducedMotion();
 
-  // Sync tab ↔ URL hash for deep linking + back button.
   useEffect(() => {
     const onHash = () => setTabState(readTabFromHash());
     window.addEventListener('hashchange', onHash);
@@ -82,8 +87,7 @@ function AppContent() {
   if (!user) return <Login />;
 
   const today = new Date();
-  const weekday = format(today, 'EEEE', { locale: es });
-  const dateStr = format(today, "d 'de' MMMM", { locale: es });
+  const dateLabel = format(today, "EEEE, d 'de' MMMM yyyy", { locale: es }).toUpperCase();
   const sectionLabel = TABS.find((t) => t.id === tab)?.label ?? '';
   const greetingName = getGreetingName(user);
 
@@ -93,17 +97,21 @@ function AppContent() {
 
   return (
     <div className="min-h-dvh bg-transparent text-zinc-900 font-sans selection:bg-zinc-900 selection:text-white flex flex-col sm:flex-row pb-[calc(96px+env(safe-area-inset-bottom))] sm:pb-0">
-      <Sidebar active={tab} onChange={setTab} />
+      <Sidebar
+        active={tab}
+        onChange={setTab}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((value) => !value)}
+      />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Sticky header / Top Bar */}
         <header className="sticky top-0 z-30 bg-zinc-50/80 backdrop-blur-xl pt-[env(safe-area-inset-top)] border-b border-zinc-200/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between gap-3">
+          <div className="max-w-[1580px] mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-400 mb-1">
-                {weekday}, {dateStr} de {today.getFullYear()}
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-400 mb-1">
+                {dateLabel}
               </p>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-emerald-900">
+              <h1 className="text-2xl sm:text-[32px] font-semibold tracking-tight text-emerald-900">
                 Hola, {greetingName}
               </h1>
             </div>
@@ -112,17 +120,18 @@ function AppContent() {
               <WheelBubble active={tab} onChange={setTab} />
               
               <button
+                type="button"
+                aria-label="Nueva entrada"
                 onClick={() => setTab('transactions')}
-                className="hidden sm:flex items-center gap-2 px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-[10px] font-bold tracking-[0.1em] uppercase hover:bg-emerald-900 transition-colors shadow-sm"
+                className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(45,90,39,0.18)] transition-colors hover:bg-[#244920] active:scale-95"
               >
-                <span className="text-base">+</span>
-                NUEVA ENTRADA
+                <span className="text-xl leading-none font-medium">+</span>
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 sm:py-8">
+        <main className="flex-1 max-w-[1580px] w-full mx-auto px-4 sm:px-8 py-6 sm:py-8">
         <AnimatePresence mode="wait">
           <motion.section
             key={tab}
@@ -155,7 +164,7 @@ function AppContent() {
         </AnimatePresence>
         </main>
 
-        <footer className="hidden sm:flex max-w-7xl w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">
+        <footer className="hidden sm:flex max-w-[1580px] w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">
           <span>© {today.getFullYear()} MONA</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1 h-1 rounded-full bg-emerald-500" />
@@ -173,24 +182,26 @@ function AppContent() {
 }
 
 const OverviewSection: React.FC = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
-    <div className="lg:col-span-1">
-      <BalanceHero />
+  <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_336px] gap-6 xl:gap-8">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 xl:gap-5">
+        <BalanceHero />
+        <StatCard label="Ingresos Brutos" value="$1,700" icon={<ArrowUpRight size={18} strokeWidth={2.4} />} />
+        <StatCard label="Tasa de Gasto" value="$1,240" icon={<ArrowDownLeft size={18} strokeWidth={2.4} />} />
+        <SavingsRateCard />
+      </div>
+
+      <ComparativeChart />
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.95fr)_minmax(0,1.35fr)] gap-6">
+        <CategoryBreakdown />
+        <IntuicionAutonoma />
+      </div>
     </div>
-    <div className="sm:hidden">
-      <RecentActivityCard limit={5} />
-    </div>
-    <div className="hidden sm:block lg:col-span-2">
-      <FixedFlowCard />
-    </div>
-    <div className="lg:col-span-2 order-3">
-      <BudgetsCard />
-    </div>
-    <div className="lg:col-span-1 order-4">
-      <SavingsRate />
-    </div>
-    <div className="lg:col-span-3 order-5">
-      <CategoryBreakdown />
+
+    <div className="space-y-6">
+      <LibroOperativo />
+      <ProjectProgress />
     </div>
   </div>
 );
@@ -218,7 +229,7 @@ const AnalysisSection: React.FC = () => (
       <CategoryBreakdown />
     </div>
     <div className="lg:col-span-1">
-      <SavingsRate />
+      <SavingsRateCard />
     </div>
     <div className="lg:col-span-3">
       <ComparativeChart />
