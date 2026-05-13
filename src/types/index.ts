@@ -13,7 +13,9 @@ export interface Transaction {
 export interface UserSettings {
   currency: string;
   theme: 'light' | 'dark';
-  categories: string[];
+  incomeCategories: string[];
+  expenseCategories: string[];
+  categories?: string[]; // Deprecated, kept for backward compatibility and migration
   /** Presupuesto mensual por categoría (en la moneda activa). Falta = sin límite. */
   budgets?: Record<string, number>;
 }

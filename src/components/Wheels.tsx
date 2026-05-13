@@ -251,11 +251,14 @@ export const Wheels: React.FC = () => {
           <PresetPicker
             onPick={(preset) => {
               setPicking(false);
+              const cats = preset.txType === 'income'
+                ? (settings.incomeCategories || settings.categories || [])
+                : (settings.expenseCategories || settings.categories || []);
               setDraft({
                 title: preset.title,
                 mode: preset.mode,
                 txType: preset.txType,
-                slices: preset.build(settings.categories),
+                slices: preset.build(cats),
               });
             }}
             onClose={() => setPicking(false)}
@@ -537,7 +540,7 @@ const WheelSheet: React.FC<{ initial: SheetDraft; onClose: () => void }> = ({ in
                       className="px-2 py-2 bg-white border border-zinc-200 rounded-lg focus:outline-none focus:border-zinc-900 text-xs cursor-pointer"
                     >
                       <option value="">— sin categoría —</option>
-                      {settings.categories.map((c) => (
+                      {(txType === 'income' ? (settings.incomeCategories || settings.categories || []) : (settings.expenseCategories || settings.categories || [])).map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -707,7 +710,7 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
       await addTransaction({
         amount: result.value,
         type: wheel.txType,
-        category: result.category || settings.categories[0],
+        category: result.category || (wheel.txType === 'income' ? (settings.incomeCategories || settings.categories || [])[0] : (settings.expenseCategories || settings.categories || [])[0]) || '',
         description: `${wheel.title} — ${result.label}`,
         date: new Date().toISOString(),
       });

@@ -333,9 +333,14 @@ interface RecurringSheetProps {
 const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => {
   const { upsertRecurring, settings } = useFinance();
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'expense');
+  
+  const incomeCats = settings.incomeCategories || settings.categories || [];
+  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const activeCategories = type === 'income' ? incomeCats : expenseCats;
+
   const [name, setName] = useState(initial?.name ?? '');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
-  const [category, setCategory] = useState(initial?.category ?? settings.categories[0]);
+  const [category, setCategory] = useState(initial?.category ?? activeCategories[0] ?? '');
   const [frequency, setFrequency] = useState<RecurringFrequency>(initial?.frequency ?? 'monthly');
   const [dayOfMonth, setDayOfMonth] = useState(initial?.dayOfMonth ?? new Date().getDate());
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(
@@ -424,7 +429,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
               type="button"
               role="tab"
               aria-selected={type === 'expense'}
-              onClick={() => setType('expense')}
+              onClick={() => { setType('expense'); setCategory(expenseCats[0] || ''); }}
               className={cn(
                 'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
                 type === 'expense' ? 'text-red-600' : 'text-zinc-500 hover:text-zinc-800'
@@ -445,7 +450,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
               type="button"
               role="tab"
               aria-selected={type === 'income'}
-              onClick={() => setType('income')}
+              onClick={() => { setType('income'); setCategory(incomeCats[0] || ''); }}
               className={cn(
                 'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
                 type === 'income' ? 'text-emerald-600' : 'text-zinc-500 hover:text-zinc-800'
@@ -512,7 +517,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
               Categoría
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {settings.categories.map((cat) => {
+              {activeCategories.map((cat) => {
                 const active = category === cat;
                 return (
                   <button

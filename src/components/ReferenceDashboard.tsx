@@ -203,7 +203,8 @@ function useDashboardModel() {
   const categoryData = useMemo<CategoryItem[]>(() => {
     const colors = ['#2D5A27', '#B98F97', '#D9DDCF', '#C8C9C6', '#7F8E6C'];
 
-    const actual = settings.categories
+    const expenseCats = settings.expenseCategories || settings.categories || [];
+    const actual = expenseCats
       .map((category, index) => ({
         name: category,
         value: filteredTransactions

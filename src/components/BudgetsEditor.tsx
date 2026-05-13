@@ -46,7 +46,7 @@ export const BudgetsEditor: React.FC = () => {
       </div>
 
       <ul className="border-t border-zinc-100">
-        {settings.categories.map((cat) => {
+        {(settings.expenseCategories || settings.categories || []).map((cat) => {
           const isEditing = editing === cat;
           const value = budgets[cat];
           const hasBudget = typeof value === 'number' && value > 0;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { TransactionType } from '../types';
 import { Plus, Minus, Check, ChevronDown } from 'lucide-react';
@@ -13,11 +13,32 @@ const todayLocalISO = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+const yesterdayLocalISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export const TransactionForm: React.FC = () => {
-  const { addTransaction, settings, updateSettings } = useFinance();
+  const { addTransaction, settings, updateSettings, transactions } = useFinance();
   const [type, setType] = useState<TransactionType>('expense');
+  
+  const incomeCats = settings.incomeCategories || settings.categories || [];
+  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const activeCategories = type === 'income' ? incomeCats : expenseCats;
+
+  const sortedCategories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.type === type) {
+        counts.set(t.category, (counts.get(t.category) || 0) + 1);
+      }
+    }
+    return [...activeCategories].sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0));
+  }, [transactions, activeCategories, type]);
+
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(settings.categories[0]);
+  const [category, setCategory] = useState(sortedCategories[0] || '');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayLocalISO());
   const [justSaved, setJustSaved] = useState(false);
@@ -48,6 +69,17 @@ export const TransactionForm: React.FC = () => {
     setTimeout(() => setJustSaved(false), 1200);
   };
 
+  const handleTypeChange = (newType: TransactionType) => {
+    setType(newType);
+    const targetCats = newType === 'income' ? incomeCats : expenseCats;
+    const counts = new Map<string, number>();
+    for (const t of transactions) {
+      if (t.type === newType) counts.set(t.category, (counts.get(t.category) || 0) + 1);
+    }
+    const sorted = [...targetCats].sort((a, b) => (counts.get(b) || 0) - (counts.get(a) || 0));
+    setCategory(sorted[0] || '');
+  };
+
   return (
     <div className="bg-white p-5 sm:p-6 rounded-3xl border border-zinc-200/70 shadow-sm">
       <div className="flex items-center justify-between mb-5">
@@ -64,7 +96,7 @@ export const TransactionForm: React.FC = () => {
             role="tab"
             aria-selected={type === 'income'}
             type="button"
-            onClick={() => setType('income')}
+            onClick={() => handleTypeChange('income')}
             className={cn(
               'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
               type === 'income' ? 'text-emerald-600' : 'text-zinc-500 hover:text-zinc-800'
@@ -85,7 +117,7 @@ export const TransactionForm: React.FC = () => {
             role="tab"
             aria-selected={type === 'expense'}
             type="button"
-            onClick={() => setType('expense')}
+            onClick={() => handleTypeChange('expense')}
             className={cn(
               'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
               type === 'expense' ? 'text-red-600' : 'text-zinc-500 hover:text-zinc-800'
@@ -148,10 +180,10 @@ export const TransactionForm: React.FC = () => {
         {/* Category chip picker */}
         <div>
           <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 block mb-2">
-            Categoría
+            Categoría <span className="text-[9px] font-normal lowercase opacity-70 ml-1">(orden inteligente)</span>
           </label>
           <div className="flex flex-wrap gap-1.5">
-            {settings.categories.map((cat) => {
+            {sortedCategories.map((cat) => {
               const active = category === cat;
               return (
                 <button
@@ -175,15 +207,33 @@ export const TransactionForm: React.FC = () => {
         {/* Date + Description grid */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
-              Fecha
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="tx-date" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
+                Fecha
+              </label>
+              <div className="flex gap-1 mr-1">
+                <button
+                  type="button"
+                  onClick={() => setDate(yesterdayLocalISO())}
+                  className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 transition-colors cursor-pointer"
+                >
+                  Ayer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDate(todayLocalISO())}
+                  className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest rounded bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 transition-colors cursor-pointer"
+                >
+                  Hoy
+                </button>
+              </div>
+            </div>
             <input
               id="tx-date"
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="mt-1 w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm num"
+              className="w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm num"
             />
           </div>
           <div>
