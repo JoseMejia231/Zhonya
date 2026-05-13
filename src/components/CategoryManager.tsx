@@ -15,6 +15,11 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<'income' | 'expense'>('expense');
+
+  const incomeCats = settings.incomeCategories || settings.categories || [];
+  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const currentList = activeTab === 'income' ? incomeCats : expenseCats;
 
   const counts = useMemo(() => {
     const m = new Map<string, number>();
@@ -48,23 +53,31 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
       setError('Máximo 24 caracteres.');
       return;
     }
-    const exists = settings.categories.some((c) => c.toLowerCase() === name.toLowerCase());
+    const exists = currentList.some((c) => c.toLowerCase() === name.toLowerCase());
     if (exists) {
       setError('Esa categoría ya existe.');
       return;
     }
-    updateSettings({ categories: [...settings.categories, name] });
+    if (activeTab === 'income') {
+      updateSettings({ incomeCategories: [...incomeCats, name] });
+    } else {
+      updateSettings({ expenseCategories: [...expenseCats, name] });
+    }
     setNewCat('');
     setError(null);
   };
 
   const handleDelete = (cat: string) => {
-    if (settings.categories.length <= 1) {
+    if (currentList.length <= 1) {
       setError('Debe existir al menos una categoría.');
       setPendingDelete(null);
       return;
     }
-    updateSettings({ categories: settings.categories.filter((c) => c !== cat) });
+    if (activeTab === 'income') {
+      updateSettings({ incomeCategories: incomeCats.filter((c) => c !== cat) });
+    } else {
+      updateSettings({ expenseCategories: expenseCats.filter((c) => c !== cat) });
+    }
     setPendingDelete(null);
     setError(null);
   };
@@ -95,27 +108,51 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
             className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md z-50 bg-white rounded-3xl shadow-2xl shadow-black/20 border border-zinc-200/70 overflow-hidden max-h-[85vh] flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-zinc-100">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
-                  <Tag size={16} className="text-zinc-700" />
+            <div className="flex flex-col border-b border-zinc-100">
+              <div className="flex items-center justify-between p-5 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center">
+                    <Tag size={16} className="text-zinc-700" />
+                  </div>
+                  <div>
+                    <h2 id="cat-mgr-title" className="text-sm font-semibold text-zinc-900">
+                      Categorías
+                    </h2>
+                    <p className="text-[11px] text-zinc-500 num">
+                      {incomeCats.length + expenseCats.length} total
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 id="cat-mgr-title" className="text-sm font-semibold text-zinc-900">
-                    Categorías
-                  </h2>
-                  <p className="text-[11px] text-zinc-500 num">
-                    {settings.categories.length} total
-                  </p>
-                </div>
+                <button
+                  onClick={onClose}
+                  aria-label="Cerrar"
+                  className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <button
-                onClick={onClose}
-                aria-label="Cerrar"
-                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 cursor-pointer"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex px-5 gap-4">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('expense'); setError(null); setPendingDelete(null); }}
+                  className={cn(
+                    'pb-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors cursor-pointer',
+                    activeTab === 'expense' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                  )}
+                >
+                  Gastos ({expenseCats.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('income'); setError(null); setPendingDelete(null); }}
+                  className={cn(
+                    'pb-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors cursor-pointer',
+                    activeTab === 'income' ? 'border-zinc-900 text-zinc-900' : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                  )}
+                >
+                  Ingresos ({incomeCats.length})
+                </button>
+              </div>
             </div>
 
             {/* Add form */}
@@ -166,7 +203,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
             <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
               <ul className="space-y-1">
                 <AnimatePresence initial={false}>
-                  {settings.categories.map((cat) => {
+                  {currentList.map((cat) => {
                     const count = counts.get(cat) ?? 0;
                     const isPending = pendingDelete === cat;
                     return (
@@ -216,7 +253,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
                               setPendingDelete(cat);
                             }}
                             aria-label={`Eliminar ${cat}`}
-                            disabled={settings.categories.length <= 1}
+                            disabled={currentList.length <= 1}
                             className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all sm:opacity-0 group-hover:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-500/30 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                           >
                             <Trash2 size={13} />

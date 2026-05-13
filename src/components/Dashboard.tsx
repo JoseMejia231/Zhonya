@@ -89,7 +89,8 @@ function useFinanceMetrics() {
     [transactions, now]
   );
 
-  const categoryData = settings.categories
+  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const categoryData = expenseCats
     .map((cat) => ({
       name: cat,
       value: filteredTransactions

@@ -67,7 +67,8 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 const DEFAULT_SETTINGS: UserSettings = {
   currency: 'DOP',
   theme: 'light',
-  categories: ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Salario', 'Inversión', 'Otros'],
+  incomeCategories: ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'],
+  expenseCategories: ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Otros Gastos'],
 };
 
 const INITIAL_STATE: FinanceState = {
@@ -127,7 +128,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
     const unsubscribeSettings = onSnapshot(settingsRef, (snapshot) => {
       if (snapshot.exists()) {
-        dispatch({ type: 'UPDATE_SETTINGS', payload: snapshot.data() as UserSettings });
+        const data = snapshot.data() as UserSettings;
+        // Migración de datos antiguos
+        if (data.categories && (!data.incomeCategories || !data.expenseCategories)) {
+          const defaultIncomes = ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'];
+          data.incomeCategories = data.categories.filter(c => defaultIncomes.includes(c));
+          if (data.incomeCategories.length === 0) data.incomeCategories = ['Salario', 'Otros Ingresos'];
+          data.expenseCategories = data.categories.filter(c => !defaultIncomes.includes(c));
+          if (data.expenseCategories.length === 0) data.expenseCategories = ['Otros Gastos'];
+        }
+        dispatch({ type: 'UPDATE_SETTINGS', payload: data });
       } else {
         setDoc(settingsRef, DEFAULT_SETTINGS);
       }
