@@ -32,23 +32,23 @@ interface TabDef {
 }
 
 export const TABS: TabDef[] = [
-  { id: 'overview', label: 'TABLERO', shortLabel: 'Tablero', icon: Home, mobileBottom: true },
+  { id: 'overview', label: 'RESUMEN', shortLabel: 'Resumen', icon: Home, mobileBottom: true },
   {
     id: 'transactions',
-    label: 'LIBRO MAYOR',
-    shortLabel: 'Libro',
+    label: 'MOVIMIENTOS',
+    shortLabel: 'Movimientos',
     icon: ArrowLeftRight,
     mobileBottom: true,
   },
   {
     id: 'recurring',
-    label: 'OPERACIONES',
-    shortLabel: 'Operac.',
+    label: 'GASTOS FIJOS',
+    shortLabel: 'Gastos fijos',
     icon: Repeat,
     mobileBottom: true,
   },
   { id: 'analysis', label: 'ANÁLISIS', shortLabel: 'Análisis', icon: PieChart, mobileBottom: true },
-  { id: 'wheels', label: 'INSPIRACIÓN', shortLabel: 'Inspira', icon: Disc3, mobileBottom: false },
+  { id: 'wheels', label: 'RULETA', shortLabel: 'Ruleta', icon: Disc3, mobileBottom: false },
   {
     id: 'settings',
     label: 'CONFIGURACIÓN',
