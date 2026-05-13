@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'mona-v1';
-const PRECACHE_URLS = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest'];
+const CACHE_VERSION = 'mona-v2';
+const PRECACHE_URLS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -77,8 +77,8 @@ messaging.onBackgroundMessage((payload) => {
   const data = payload.data || {};
   self.registration.showNotification(title, {
     body,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
     data,
     tag: data.tag || 'mona-recurring',
     requireInteraction: true,
