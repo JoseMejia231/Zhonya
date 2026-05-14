@@ -144,9 +144,7 @@ export const Login: React.FC = () => {
         
         <div className="relative z-10">
           <div className="flex items-center gap-4 mb-20">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-[#ede8dc] flex items-center justify-center shadow-sm">
-              <MonaMark size={40} />
-            </div>
+            <MonaMark size={50} className="rounded-2xl" />
             <div>
               <div className="text-xl font-black tracking-tight text-[#836637]">MONA</div>
               <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-400 opacity-60">
@@ -208,9 +206,7 @@ export const Login: React.FC = () => {
             {/* Internal Brand Header (Mobile Only) */}
             <DepthWrapper>
               <div className="text-center mb-14 lg:hidden flex flex-col items-center">
-                <div className="inline-flex p-4 rounded-3xl bg-[#F5F5F0] border border-[#ede8dc] mb-5 shadow-inner">
-                  <MonaMark size={48} />
-                </div>
+                <MonaMark size={72} className="rounded-[2rem] mb-5" />
                 <h1 className="text-5xl font-black tracking-tight text-[#836637] mb-2">MONA</h1>
                 <p className="text-[12px] font-black uppercase tracking-[0.4em] text-[#4b5741]/40">
                   Personal Wealth
