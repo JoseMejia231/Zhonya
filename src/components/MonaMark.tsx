@@ -8,7 +8,7 @@ interface MonaMarkProps {
 export const MonaMark: React.FC<MonaMarkProps> = ({ size = 24, className }) => {
   return (
     <img
-      src="/logo.png"
+      src="/logo.jpeg"
       width={size}
       height={size}
       alt=""
