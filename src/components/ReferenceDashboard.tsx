@@ -133,7 +133,7 @@ function formatDollar(value: number) {
 }
 
 function useDashboardModel() {
-  const { transactions, filteredTransactions, settings } = useFinance();
+  const { transactions, filteredTransactions, settings, savingsGoals } = useFinance();
   const hasTransactions = transactions.length > 0;
   const today = new Date();
 
@@ -224,6 +224,20 @@ function useDashboardModel() {
     ...flowData.map((point) => Math.max(point.entrada, point.salida))
   );
 
+  const activeProject = useMemo(() => {
+    if (savingsGoals && savingsGoals.length > 0) {
+      const g = savingsGoals[0];
+      return {
+        title: `PROYECTO: ${g.title.toUpperCase()}`,
+        progress: Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)),
+        current: g.currentAmount,
+        target: g.targetAmount,
+        currency: g.currency,
+      };
+    }
+    return SAMPLE_PROJECT;
+  }, [savingsGoals]);
+
   return {
     capital,
     savingsRate,
@@ -232,7 +246,7 @@ function useDashboardModel() {
     recentLedger,
     categoryData,
     chartMax,
-    project: SAMPLE_PROJECT,
+    project: activeProject,
   };
 }
 
@@ -396,33 +410,55 @@ export const IntuicionAutonoma: React.FC = () => {
 };
 
 export const ProjectProgress: React.FC = () => {
-  const { project } = useDashboardModel();
+  const { savingsGoals, settings } = useFinance();
+
+  if (!savingsGoals || savingsGoals.length === 0) {
+    return (
+      <div className={cn(SURFACES.night, 'relative overflow-hidden p-5 sm:p-6 text-white min-h-[160px] flex items-center justify-center')}>
+         <p className="text-white/40 text-sm font-medium tracking-wide">No hay metas de ahorro activas</p>
+         <div className="absolute -right-3 bottom-2 text-white/8 pointer-events-none">
+           <BadgeDollarSign size={80} strokeWidth={1.25} />
+         </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(SURFACES.night, 'relative overflow-hidden p-5 sm:p-6 text-white')}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/28">
-          {project.title}
-        </p>
-        <span className="text-[10px] font-bold text-[#75b156]">{project.progress}%</span>
+      <div className="space-y-7 relative z-10">
+        {savingsGoals.map(goal => {
+          const progress = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
+          const currency = goal.currency || settings.currency || 'USD';
+          
+          return (
+            <div key={goal.id}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-white/40">
+                  PROYECTO: {goal.title}
+                </p>
+                <span className="text-[10px] font-bold text-[#75b156]">{progress}%</span>
+              </div>
+
+              <div className="mt-2.5">
+                <h4 className="text-sm font-semibold num tracking-tight text-white/90">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Math.round(goal.currentAmount))} / {new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Math.round(goal.targetAmount))}
+                </h4>
+                <div className="mt-3 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${progress}%` }}
+                    transition={{ duration: 0.9, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-[#75b156]"
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      <div className="mt-5">
-        <h4 className="text-base font-semibold num tracking-tight text-white">
-          {formatDollar(project.current)} / ${Math.round(project.target / 1000)}k
-        </h4>
-        <div className="mt-4 h-1.5 rounded-full bg-white/6">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${project.progress}%` }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
-            className="h-full rounded-full bg-[#75b156]"
-          />
-        </div>
-      </div>
-
-      <div className="absolute -right-3 bottom-2 text-white/8">
-        <BadgeDollarSign size={34} strokeWidth={1.4} />
+      <div className="absolute -right-6 -bottom-6 text-white/5 pointer-events-none">
+        <BadgeDollarSign size={120} strokeWidth={1.25} />
       </div>
     </div>
   );

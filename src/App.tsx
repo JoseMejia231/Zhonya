@@ -23,9 +23,10 @@ import { FixedFlowCard } from './components/FixedFlowCard';
 import { BudgetsCard } from './components/BudgetsCard';
 import { RecentActivityCard } from './components/RecentActivityCard';
 import { Wheels } from './components/Wheels';
+import { SavingsGoalsSection } from './components/SavingsGoals';
 import { DesktopTabs, MobileBottomNav, WheelBubble, Sidebar, TABS, TabId } from './components/TabBar';
 import { DashboardSkeleton } from './components/Skeleton';
-import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -37,6 +38,7 @@ const VALID_TABS: TabId[] = [
   'recurring',
   'analysis',
   'wheels',
+  'goals',
   'settings',
 ];
 
@@ -117,6 +119,14 @@ function AppContent() {
             </div>
 
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                aria-label="Configuración"
+                onClick={() => setTab('settings')}
+                className="sm:hidden inline-flex items-center justify-center min-w-[40px] min-h-[40px] w-10 h-10 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 shrink-0 bg-white text-zinc-900 border border-zinc-200/70 shadow-sm hover:bg-zinc-50 active:scale-95"
+              >
+                <SettingsIcon size={18} strokeWidth={2.2} />
+              </button>
               <WheelBubble active={tab} onChange={setTab} />
               
               <button
@@ -155,6 +165,11 @@ function AppContent() {
                 <Wheels />
               </div>
             )}
+            {tab === 'goals' && (
+              <div className="max-w-4xl mx-auto">
+                <SavingsGoalsSection />
+              </div>
+            )}
             {tab === 'settings' && (
               <div className="w-full">
                 <Settings />
@@ -184,24 +199,20 @@ function AppContent() {
 const OverviewSection: React.FC = () => (
   <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_336px] gap-6 xl:gap-8">
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 xl:gap-5">
+      <div className="w-full">
         <BalanceHero />
-        <StatCard label="Ingresos Brutos" value="$1,700" icon={<ArrowUpRight size={18} strokeWidth={2.4} />} />
-        <StatCard label="Tasa de Gasto" value="$1,240" icon={<ArrowDownLeft size={18} strokeWidth={2.4} />} />
-        <SavingsRateCard />
       </div>
 
       <ComparativeChart />
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(280px,0.95fr)_minmax(0,1.35fr)] gap-6">
         <CategoryBreakdown />
-        <IntuicionAutonoma />
+        <ProjectProgress />
       </div>
     </div>
 
     <div className="space-y-6">
       <LibroOperativo />
-      <ProjectProgress />
     </div>
   </div>
 );

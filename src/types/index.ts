@@ -77,3 +77,14 @@ export interface RecurringExpense {
   lastNotifiedKey?: string;
   createdAt: string; // ISO
 }
+
+export interface SavingsGoal {
+  id: string;
+  uid: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  currency?: string;
+  createdAt: string; // ISO
+  deadline?: string; // ISO
+}

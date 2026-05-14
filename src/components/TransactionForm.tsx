@@ -20,10 +20,12 @@ const yesterdayLocalISO = () => {
 };
 
 export const TransactionForm: React.FC = () => {
-  const { addTransaction, settings, updateSettings, transactions } = useFinance();
+  const { addTransaction, settings, updateSettings, transactions, savingsGoals, upsertSavingsGoal } = useFinance();
   const [type, setType] = useState<TransactionType>('expense');
   
-  const incomeCats = settings.incomeCategories || settings.categories || [];
+  const incomeCats = [...(settings.incomeCategories || settings.categories || [])];
+  if (!incomeCats.includes('Metas')) incomeCats.push('Metas');
+
   const expenseCats = settings.expenseCategories || settings.categories || [];
   const activeCategories = type === 'income' ? incomeCats : expenseCats;
 
@@ -42,6 +44,7 @@ export const TransactionForm: React.FC = () => {
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(todayLocalISO());
   const [justSaved, setJustSaved] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState<string>(savingsGoals.length > 0 ? savingsGoals[0].id : '');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,13 +57,25 @@ export const TransactionForm: React.FC = () => {
     const now = new Date();
     const localDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
 
+    const parsedAmount = Number(amount);
+
     addTransaction({
-      amount: Number(amount),
+      amount: parsedAmount,
       type,
       category,
       description,
       date: localDate.toISOString(),
     });
+
+    if (category === 'Metas' && selectedGoalId) {
+      const targetGoal = savingsGoals.find(g => g.id === selectedGoalId);
+      if (targetGoal) {
+        upsertSavingsGoal({
+          ...targetGoal,
+          currentAmount: targetGoal.currentAmount + parsedAmount
+        });
+      }
+    }
 
     setAmount('');
     setDescription('');
@@ -203,6 +218,27 @@ export const TransactionForm: React.FC = () => {
             })}
           </div>
         </div>
+
+        {/* Goal selector if category is Metas */}
+        {category === 'Metas' && savingsGoals.length > 0 && (
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-emerald-600 ml-1 block mb-2">
+              Destino de la Meta
+            </label>
+            <div className="relative">
+              <select
+                value={selectedGoalId}
+                onChange={e => setSelectedGoalId(e.target.value)}
+                className="w-full appearance-none bg-emerald-50/50 border border-emerald-200/60 rounded-xl px-4 py-3 text-sm font-medium text-emerald-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all"
+              >
+                {savingsGoals.map(g => (
+                  <option key={g.id} value={g.id}>{g.title}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none" />
+            </div>
+          </div>
+        )}
 
         {/* Date + Description grid */}
         <div className="grid grid-cols-2 gap-3">
