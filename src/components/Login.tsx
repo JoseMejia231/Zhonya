@@ -125,26 +125,35 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
-          <div className="max-w-md">
-            <h2 className="text-6xl xl:text-7xl font-black tracking-tighter leading-[1] text-[#4b5741] mb-8">
-              Tu futuro <br />
-              empieza hoy.
-            </h2>
-            <p className="text-lg text-[#4b5741]/70 font-medium leading-relaxed mb-12">
-              Gestiona tus finanzas con la elegancia y simplicidad que te mereces. 
-              Privacidad absoluta, control total.
-            </p>
+          <div className="relative w-full max-w-2xl py-20 px-8">
+            {/* Outer Larger Cloud */}
+            <div className="relative w-full aspect-[16/11] group">
+              {/* Lumps for Outer Cloud */}
+              <div className="absolute -top-[15%] left-[10%] w-[35%] h-[50%] bg-white/40 rounded-full blur-2xl" />
+              <div className="absolute -top-[25%] left-[30%] w-[45%] h-[65%] bg-white/60 rounded-full shadow-xl shadow-[#836637]/5" />
+              <div className="absolute -top-[10%] left-[65%] w-[30%] h-[45%] bg-white/40 rounded-full blur-xl" />
 
-            <div className="space-y-8">
-              {features.map((f) => (
-                <div key={f.title} className="flex items-center gap-6">
-                  <f.icon size={28} strokeWidth={1.5} className="text-[#2D5A27]" />
-                  <div>
-                    <div className="text-sm font-black uppercase tracking-wider text-[#4b5741]">{f.title}</div>
-                    <div className="text-xs text-[#4b5741]/60 font-bold uppercase tracking-widest mt-1">{f.sub}</div>
+              <div className="relative w-full h-full bg-white/30 backdrop-blur-md rounded-[5rem] border border-white/60 shadow-2xl shadow-[#836637]/10 flex items-center justify-center p-12">
+
+                {/* Inner Cloud Container */}
+                <div className="relative w-[85%] aspect-[16/10] group-hover:scale-[1.02] transition-transform duration-700">
+                  {/* Lumps for Inner Cloud */}
+                  <div className="absolute -top-[15%] left-[12%] w-[30%] h-[50%] bg-white rounded-full" />
+                  <div className="absolute -top-[25%] left-[35%] w-[40%] h-[60%] bg-white rounded-full shadow-lg" />
+                  <div className="absolute -top-[12%] left-[62%] w-[25%] h-[45%] bg-white rounded-full" />
+
+                  <div className="relative w-full h-full bg-white rounded-[4rem] shadow-xl shadow-[#836637]/5 flex flex-col items-center justify-center text-center p-10 border border-[#ede8dc]/50">
+                    <h2 className="text-4xl xl:text-5xl font-black tracking-tighter leading-tight text-[#4b5741] mb-6">
+                      Domina tus <br />
+                      <span className="text-[#836637]">finanzas personales.</span>
+                    </h2>
+                    <p className="text-sm font-bold uppercase tracking-[0.3em] text-[#2D5A27] opacity-80">
+                      Libertad en cada decisión
+                    </p>
                   </div>
                 </div>
-              ))}
+
+              </div>
             </div>
           </div>
         </div>
