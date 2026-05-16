@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
 import {
+  type AnalysisPeriod,
   BalanceHero,
   ComparativeChart,
   CategoryBreakdown,
@@ -9,6 +10,8 @@ import {
   LibroOperativo,
   IntuicionAutonoma,
   ProjectProgress,
+  SampleDataBanner,
+  MonthComparisonCard,
 } from './components/ReferenceDashboard';
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionList } from './components/TransactionList';
@@ -30,6 +33,7 @@ import { ArrowDownLeft, ArrowUpRight, Settings as SettingsIcon } from 'lucide-re
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from './utils';
 import { tap } from './utils/haptics';
 
 const VALID_TABS: TabId[] = [
@@ -231,22 +235,72 @@ const TransactionsSection: React.FC<TransactionsSectionProps> = () => (
   </div>
 );
 
-const AnalysisSection: React.FC = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
-    <div className="lg:col-span-3">
-      <RecurringProjection months={6} />
+const ANALYSIS_FILTERS = [
+  { id: 'all' as const, label: 'Todo' },
+  { id: 'month' as const, label: 'Mes' },
+  { id: 'year' as const, label: 'Año' },
+] as const;
+
+const AnalysisSection: React.FC = () => {
+  const [period, setPeriod] = useState<AnalysisPeriod>('month');
+  const projectionMonths = period === 'year' ? 12 : period === 'month' ? 3 : 6;
+
+  return (
+    <div className="mesh-gradient -mx-4 -mt-4 p-4 sm:-mx-8 sm:-mt-8 sm:p-8 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-7 sm:space-y-9">
+        {/* Sample data banner */}
+        <SampleDataBanner />
+
+        {/* Date range filter */}
+        <div className="flex items-center gap-3">
+          {ANALYSIS_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setPeriod(f.id)}
+              aria-pressed={period === f.id}
+              className={cn(
+                'px-6 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-[0.3em] transition-all duration-300',
+                period === f.id
+                  ? 'bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(47,90,41,0.25)] scale-105'
+                  : 'bg-white/60 backdrop-blur-md border border-[#e7dfd1] text-[#7c7361] hover:bg-white hover:shadow-md'
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Projection */}
+        <div className="premium-shadow rounded-[32px]">
+          <RecurringProjection months={projectionMonths} />
+        </div>
+
+        {/* Month comparison + Savings */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 sm:gap-9">
+          <div className="lg:col-span-2">
+            <MonthComparisonCard />
+          </div>
+          <div className="lg:col-span-1">
+            <SavingsRateCard period={period} />
+          </div>
+        </div>
+
+        {/* Category + Budgets */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7 sm:gap-9">
+          <div className="lg:col-span-2">
+            <CategoryBreakdown period={period} />
+          </div>
+          <div className="lg:col-span-1">
+            <BudgetsCard period={period} />
+          </div>
+        </div>
+
+        {/* Flow chart */}
+        <ComparativeChart period={period} />
+      </div>
     </div>
-    <div className="lg:col-span-2">
-      <CategoryBreakdown />
-    </div>
-    <div className="lg:col-span-1">
-      <SavingsRateCard />
-    </div>
-    <div className="lg:col-span-3">
-      <ComparativeChart />
-    </div>
-  </div>
-);
+  );
+};
 
 export default function App() {
   return (
