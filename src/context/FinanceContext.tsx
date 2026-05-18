@@ -36,6 +36,7 @@ interface FinanceContextType extends FinanceState {
   notificationStatus: NotificationPermission | 'unsupported';
   enableNotifications: () => Promise<boolean>;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'uid'>) => Promise<void>;
+  updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'uid'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
   setCategoryBudget: (category: string, amount: number | null) => Promise<void>;
@@ -211,6 +212,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       uid: user.uid,
     };
     await setDoc(doc(db, 'users', user.uid, 'transactions', id), newTransaction);
+  };
+
+  const updateTransaction = async (id: string, updates: Partial<Omit<Transaction, 'id' | 'uid'>>) => {
+    if (!user) return;
+    await setDoc(doc(db, 'users', user.uid, 'transactions', id), updates, { merge: true });
   };
 
   const clearUndoTimer = () => {
@@ -457,6 +463,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         notificationStatus,
         enableNotifications,
         addTransaction,
+        updateTransaction,
         deleteTransaction,
         updateSettings,
         setCategoryBudget,
