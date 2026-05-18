@@ -68,8 +68,8 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[800px] bg-white rounded-2xl border border-zinc-200 overflow-hidden shadow-sm">
-      {/* Settings Sidebar - Professional Enterprise Layout */}
-      <aside className="w-full lg:w-72 border-r border-zinc-200 bg-zinc-50/50 flex flex-col">
+      {/* Settings Sidebar - Desktop only */}
+      <aside className="hidden lg:flex w-72 border-r border-zinc-200 bg-zinc-50/50 flex-col">
         <div className="p-6 border-b border-zinc-200 bg-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-lg border border-zinc-100 flex items-center justify-center p-2 shadow-sm sidebar-logo-container">
@@ -468,6 +468,54 @@ export const Settings: React.FC = () => {
               </Section>
             </div>
           )}
+        </div>
+
+        {/* Mobile navigation options - shown below content on mobile only */}
+        <div className="lg:hidden px-6 pb-4 pt-6">
+          <nav className="space-y-5">
+            {/* Sistema */}
+            <div className="space-y-1">
+              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Sistema</p>
+              <NavButton active={activeSection === 'general'} onClick={() => setActiveSection('general')} icon={<SettingsIcon size={16} />} label="General" />
+              <NavButton active={activeSection === 'appearance'} onClick={() => setActiveSection('appearance')} icon={<Palette size={16} />} label="Apariencia" />
+              <NavButton active={activeSection === 'notifications'} onClick={() => setActiveSection('notifications')} icon={<Bell size={16} />} label="Notificaciones" />
+            </div>
+            {/* Seguridad */}
+            <div className="space-y-1">
+              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Seguridad</p>
+              <NavButton active={activeSection === 'security'} onClick={() => setActiveSection('security')} icon={<ShieldCheck size={16} />} label="Protección" />
+              <NavButton active={activeSection === 'team'} onClick={() => setActiveSection('team')} icon={<Users size={16} />} label="Equipo" />
+            </div>
+            {/* Negocio */}
+            <div className="space-y-1">
+              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Negocio</p>
+              <NavButton active={activeSection === 'billing'} onClick={() => setActiveSection('billing')} icon={<CreditCard size={16} />} label="Suscripción" />
+              <NavButton active={activeSection === 'integrations'} onClick={() => setActiveSection('integrations')} icon={<Share2 size={16} />} label="Integraciones" />
+              <NavButton active={activeSection === 'data'} onClick={() => setActiveSection('data')} icon={<Database size={16} />} label="Bóveda de Datos" />
+            </div>
+            {/* Avanzado */}
+            <div className="space-y-1">
+              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Avanzado</p>
+              <NavButton active={activeSection === 'audit'} onClick={() => setActiveSection('audit')} icon={<FileText size={16} />} label="Auditoría" />
+              <NavButton active={activeSection === 'api'} onClick={() => setActiveSection('api')} icon={<Code size={16} />} label="API & Webhooks" />
+              <NavButton active={activeSection === 'delete_account'} onClick={() => setActiveSection('delete_account')} icon={<Trash2 size={16} />} label="Eliminar Cuenta" />
+            </div>
+            {/* Ayuda */}
+            <div className="space-y-1 pt-4 border-t border-zinc-200">
+              <NavButton active={activeSection === 'support'} onClick={() => setActiveSection('support')} icon={<HelpCircle size={16} />} label="Ayuda y Soporte" />
+            </div>
+          </nav>
+        </div>
+
+        {/* Mobile-only logout button at the very bottom */}
+        <div className="lg:hidden px-6 pb-8 pt-2">
+          <button
+            onClick={logout}
+            className="w-full flex items-center justify-center gap-3 px-4 py-4 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-2xl transition-colors text-[11px] font-black uppercase tracking-[0.2em]"
+          >
+            <LogOut size={16} />
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </main>
 

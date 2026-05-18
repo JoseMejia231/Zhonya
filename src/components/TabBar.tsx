@@ -9,6 +9,7 @@ import {
   Settings as SettingsIcon,
   PanelLeftClose,
   PanelLeftOpen,
+  Target,
   LucideIcon,
 } from 'lucide-react';
 import { cn } from '../utils';
@@ -20,6 +21,7 @@ export type TabId =
   | 'recurring'
   | 'analysis'
   | 'wheels'
+  | 'goals'
   | 'settings';
 
 interface TabDef {
@@ -49,12 +51,13 @@ export const TABS: TabDef[] = [
   },
   { id: 'analysis', label: 'ANÁLISIS', shortLabel: 'Análisis', icon: PieChart, mobileBottom: true },
   { id: 'wheels', label: 'RULETA', shortLabel: 'Ruleta', icon: Disc3, mobileBottom: false },
+  { id: 'goals', label: 'METAS', shortLabel: 'Metas', icon: Target, mobileBottom: true },
   {
     id: 'settings',
     label: 'CONFIGURACIÓN',
     shortLabel: 'Config',
     icon: SettingsIcon,
-    mobileBottom: true,
+    mobileBottom: false,
   },
 ];
 

@@ -6,6 +6,7 @@ import {
   FilterType,
   RecurringExpense,
   Wheel,
+  SavingsGoal,
 } from '../types';
 import { auth, db, logout, requestPushToken, onForegroundMessage } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -61,6 +62,9 @@ interface FinanceContextType extends FinanceState {
   setRecurringPrompt: (p: { recurringId: string; periodKey?: string } | null) => void;
   inAppNotification: { title: string; body: string } | null;
   dismissInAppNotification: () => void;
+  savingsGoals: SavingsGoal[];
+  upsertSavingsGoal: (goal: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }) => Promise<void>;
+  deleteSavingsGoal: (id: string) => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -109,6 +113,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
   const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
   const [recurringPrompt, setRecurringPrompt] = useState<{ recurringId: string; periodKey?: string } | null>(null);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -118,6 +123,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         dispatch({ type: 'SET_STATE', payload: INITIAL_STATE });
         setRecurring([]);
         setWheels([]);
+        setSavingsGoals([]);
       }
     });
     return unsubscribe;
@@ -163,6 +169,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const unsubscribeWheels = onSnapshot(wheelsQuery, (snapshot) => {
       setWheels(snapshot.docs.map((d) => d.data() as Wheel));
     });
+
+    // Metas de ahorro almacenadas localmente para evitar problemas de reglas en Firebase
+    const savedGoals = localStorage.getItem(`mona_goals_${user.uid}`);
+    if (savedGoals) {
+      try {
+        setSavingsGoals(JSON.parse(savedGoals));
+      } catch (e) {
+        console.error('Error parsing local goals', e);
+      }
+    }
 
     return () => {
       unsubscribeSettings();
@@ -366,6 +382,40 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   };
 
+  const upsertSavingsGoal = async (
+    g: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }
+  ) => {
+    if (!user) return;
+    const id = g.id ?? crypto.randomUUID();
+    const existing = savingsGoals.find((x) => x.id === id);
+    const payload: SavingsGoal = {
+      id,
+      uid: user.uid,
+      title: g.title,
+      targetAmount: g.targetAmount,
+      currentAmount: g.currentAmount,
+      currency: g.currency,
+      deadline: g.deadline,
+      createdAt: existing?.createdAt ?? g.createdAt ?? new Date().toISOString(),
+    };
+    
+    setSavingsGoals((prev) => {
+      const updated = prev.filter(x => x.id !== id);
+      updated.push(payload);
+      localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const deleteSavingsGoal = async (id: string) => {
+    if (!user) return;
+    setSavingsGoals((prev) => {
+      const updated = prev.filter(x => x.id !== id);
+      localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   const periodKeyFor = (rec: RecurringExpense, when: Date = new Date()): string => {
     const yyyy = when.getFullYear();
     const mm = String(when.getMonth() + 1).padStart(2, '0');
@@ -486,6 +536,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         setRecurringPrompt,
         inAppNotification,
         dismissInAppNotification: () => setInAppNotification(null),
+        savingsGoals,
+        upsertSavingsGoal,
+        deleteSavingsGoal,
       }}
     >
       {children}

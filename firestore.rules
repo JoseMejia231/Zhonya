@@ -142,6 +142,18 @@ service cloud.firestore {
              (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() < 300));
     }
 
+    function isValidSavingsGoal(data) {
+      return hasRequiredFields(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline']) &&
+             data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
+             data.uid == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.targetAmount is number && data.targetAmount > 0 &&
+             data.currentAmount is number && data.currentAmount >= 0 &&
+             isValidDateString(data.createdAt) &&
+             (!('deadline' in data) || isValidDateString(data.deadline));
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -179,6 +191,14 @@ service cloud.firestore {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId) && isValidWheel(request.resource.data);
         allow update: if isOwner(userId) && isValidWheel(request.resource.data) &&
+                         request.resource.data.uid == resource.data.uid;
+        allow delete: if isOwner(userId);
+      }
+
+      match /savingsGoals/{goalId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidSavingsGoal(request.resource.data);
+        allow update: if isOwner(userId) && isValidSavingsGoal(request.resource.data) &&
                          request.resource.data.uid == resource.data.uid;
         allow delete: if isOwner(userId);
       }
