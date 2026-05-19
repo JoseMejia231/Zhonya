@@ -125,15 +125,27 @@ export const Login: React.FC = () => {
   const primaryCta = mode === 'signin' ? 'INICIAR SESI\u00d3N' : 'CREAR CUENTA';
 
   return (
-    <main
-      className="min-h-dvh w-full overflow-hidden lg:h-dvh lg:min-h-0 font-sans text-[#202D1E]"
-      style={{
-        background:
-          'radial-gradient(circle at 18% 18%, rgba(94,115,86,0.12), transparent 28%), radial-gradient(circle at 58% 64%, rgba(204,199,168,0.22), transparent 30%), linear-gradient(90deg, #F0EDE4 0%, #F3F0E8 62%, #E8E4D9 62%, #E8E4D9 100%)',
-      }}
-    >
-      <div className="flex min-h-dvh w-full flex-col lg:h-full lg:min-h-0 lg:flex-row">
-        <section className="relative flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden px-6 py-7 sm:px-10 lg:min-h-0 lg:px-[clamp(36px,4.5vw,64px)] lg:py-9">
+    <main className="relative min-h-dvh w-full overflow-hidden lg:h-dvh lg:min-h-0 font-sans text-[#202D1E] bg-[#F0EDE4]">
+      {/* Desktop split background */}
+      <div 
+        className="absolute inset-0 hidden lg:block z-0"
+        style={{
+          background:
+            'radial-gradient(circle at 18% 18%, rgba(94,115,86,0.12), transparent 28%), radial-gradient(circle at 58% 64%, rgba(204,199,168,0.22), transparent 30%), linear-gradient(90deg, #F0EDE4 0%, #F3F0E8 62%, #E8E4D9 62%, #E8E4D9 100%)',
+        }}
+      />
+      {/* Mobile uniform background */}
+      <div 
+        className="absolute inset-0 lg:hidden z-0"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 50%, rgba(94,115,86,0.12), transparent 70%)',
+        }}
+      />
+
+      <div className="relative z-10 flex min-h-dvh w-full flex-col lg:h-full lg:min-h-0 lg:flex-row">
+        {/* Decorative Graphic Section (Hidden on mobile) */}
+        <section className="relative hidden lg:flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden px-6 py-7 sm:px-10 lg:min-h-0 lg:px-[clamp(36px,4.5vw,64px)] lg:py-9">
           <div className="pointer-events-none absolute left-[8%] top-[19%] h-[32dvh] w-[32dvh] rounded-full bg-[#CCC7A8]/18 blur-3xl" />
           <div className="pointer-events-none absolute bottom-[12%] right-[6%] h-[40dvh] w-[40dvh] rounded-full bg-[#5E7356]/10 blur-3xl" />
 
@@ -207,10 +219,11 @@ export const Login: React.FC = () => {
           </div>
         </section>
 
+        {/* Login Form Section */}
         <aside className="relative flex w-full shrink-0 items-center justify-center px-6 py-8 lg:h-full lg:w-[clamp(470px,35vw,545px)] lg:px-10">
           <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[#836637]/8 blur-3xl lg:block" />
           <div
-            className="relative w-full max-w-[340px] rounded-[24px] px-9 py-9 sm:max-w-[360px] sm:px-10 sm:py-10"
+            className="relative w-full max-w-[340px] mx-auto rounded-[24px] px-9 py-9 sm:max-w-[360px] sm:px-10 sm:py-10"
             style={{
               background: palette.card,
               boxShadow: '0 28px 58px -18px rgba(32,45,30,0.20)',

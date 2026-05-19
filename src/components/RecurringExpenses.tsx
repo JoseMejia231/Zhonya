@@ -615,7 +615,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
                   {daysOfWeek.length}/7
                 </span>
               </div>
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                 {WEEKDAY_PICKER_ORDER.map((d) => {
                   const active = daysOfWeek.includes(d);
                   return (
@@ -625,7 +625,7 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
                       aria-pressed={active}
                       onClick={() => toggleDayOfWeek(d)}
                       className={cn(
-                        'py-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                        'py-2.5 sm:py-2.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-tight transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 truncate flex items-center justify-center',
                         active
                           ? 'bg-zinc-900 text-white shadow-sm'
                           : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'

@@ -601,7 +601,7 @@ export const ComparativeChart: React.FC<{ period?: AnalysisPeriod }> = ({ period
       ) : (
       <div className="h-[300px] mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={flowData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+          <AreaChart data={flowData} margin={{ top: 10, right: 10, left: -25, bottom: 15 }}>
             <defs>
               <linearGradient id="flowGreen" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#2d5a27" stopOpacity={0.15} />
@@ -618,7 +618,7 @@ export const ComparativeChart: React.FC<{ period?: AnalysisPeriod }> = ({ period
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#a19a8e', fontSize: 11, fontWeight: 600 }}
-              dy={15}
+              dy={10}
             />
             <YAxis
               axisLine={false}
