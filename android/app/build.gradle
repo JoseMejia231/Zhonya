@@ -1,0 +1,28 @@
+// MONA - OS Integration
+plugins {
+    id 'com.android.application'
+}
+
+// MONA - OS Integration
+android {
+    namespace 'com.mona.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.mona.app'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+        buildConfigField 'String', 'MONA_WEB_URL', '"https://zhonyas-61c6f.web.app/"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+// MONA - OS Integration
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+}

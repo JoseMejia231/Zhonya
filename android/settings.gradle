@@ -1,0 +1,21 @@
+// MONA - OS Integration
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+// MONA - OS Integration
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// MONA - OS Integration
+rootProject.name = 'MONAAndroid'
+include ':app'

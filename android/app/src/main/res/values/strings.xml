@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- // MONA - OS Integration -->
+    <string name="app_name">MONA</string>
+    <string name="shortcut_open_short">Abrir MONA</string>
+    <string name="shortcut_open_long">Abrir MONA directamente</string>
+    <string name="shortcut_summary_short">Resumen</string>
+    <string name="shortcut_summary_long">Ver resumen financiero</string>
+    <string name="shortcut_expense_short">Registrar gasto</string>
+    <string name="shortcut_expense_long">Registrar gasto o movimiento</string>
+    <string name="feature_summary">resumen</string>
+    <string name="feature_transactions">registrar gasto</string>
+
+    <!-- // MONA - OS Integration -->
+    <string-array name="mona_record_expense_queries">
+        <item>registrar gasto $amount en $category</item>
+        <item>registrar movimiento $amount en $category</item>
+        <item>agregar gasto $amount en $category</item>
+        <item>guardar gasto $amount en $category</item>
+        <item>record expense $amount for $category</item>
+        <item>add expense $amount for $category</item>
+    </string-array>
+</resources>

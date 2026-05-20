@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- // MONA - OS Integration -->
+    <capability android:name="actions.intent.OPEN_APP_FEATURE">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app">
+            <parameter
+                android:key="feature"
+                android:name="feature" />
+        </intent>
+    </capability>
+
+    <!-- // MONA - OS Integration -->
+    <capability
+        android:name="custom.actions.intent.RECORD_MONA_EXPENSE"
+        app:queryPatterns="@array/mona_record_expense_queries">
+        <intent
+            android:action="com.mona.app.action.REGISTER_EXPENSE"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app">
+            <parameter
+                android:key="amount"
+                android:mimeType="https://schema.org/Number"
+                android:name="amount" />
+            <parameter
+                android:key="category"
+                android:mimeType="https://schema.org/Text"
+                android:name="category" />
+            <parameter
+                android:key="description"
+                android:mimeType="https://schema.org/Text"
+                android:name="description" />
+        </intent>
+        <intent
+            android:action="com.mona.app.action.REGISTER_EXPENSE"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app" />
+    </capability>
+
+    <!-- // MONA - OS Integration -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mona_shortcut"
+        android:shortcutId="open_mona"
+        android:shortcutLongLabel="@string/shortcut_open_long"
+        android:shortcutShortLabel="@string/shortcut_open_short">
+        <intent
+            android:action="com.mona.app.action.OPEN"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app" />
+    </shortcut>
+
+    <!-- // MONA - OS Integration -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mona_shortcut"
+        android:shortcutId="view_summary"
+        android:shortcutLongLabel="@string/shortcut_summary_long"
+        android:shortcutShortLabel="@string/shortcut_summary_short">
+        <intent
+            android:action="com.mona.app.action.VIEW_SUMMARY"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding
+                android:key="feature"
+                android:value="@string/feature_summary" />
+        </capability-binding>
+    </shortcut>
+
+    <!-- // MONA - OS Integration -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mona_shortcut"
+        android:shortcutId="record_expense"
+        android:shortcutLongLabel="@string/shortcut_expense_long"
+        android:shortcutShortLabel="@string/shortcut_expense_short">
+        <intent
+            android:action="com.mona.app.action.REGISTER_EXPENSE"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app" />
+        <capability-binding android:key="actions.intent.OPEN_APP_FEATURE">
+            <parameter-binding
+                android:key="feature"
+                android:value="@string/feature_transactions" />
+        </capability-binding>
+        <capability-binding android:key="custom.actions.intent.RECORD_MONA_EXPENSE" />
+    </shortcut>
+</shortcuts>

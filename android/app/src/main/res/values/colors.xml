@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- // MONA - OS Integration -->
+    <color name="mona_background">#F4F4F5</color>
+    <color name="mona_brand">#2F5A29</color>
+    <color name="mona_surface">#F5F5F0</color>
+</resources>

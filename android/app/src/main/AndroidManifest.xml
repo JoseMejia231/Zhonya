@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- // MONA - OS Integration -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- // MONA - OS Integration -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
+    <!-- // MONA - OS Integration -->
+    <application
+        android:allowBackup="false"
+        android:icon="@drawable/ic_mona_shortcut"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.MONA"
+        android:usesCleartextTraffic="false">
+
+        <!-- // MONA - OS Integration -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mona" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="com.mona.app.action.OPEN" />
+                <action android:name="com.mona.app.action.VIEW_SUMMARY" />
+                <action android:name="com.mona.app.action.REGISTER_EXPENSE" />
+                <action android:name="com.mona.app.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- // MONA - OS Integration -->
+        <activity
+            android:name=".MONAVoiceActivator"
+            android:exported="true"
+            android:theme="@style/Theme.MONA.Transparent">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.mona.app.action.ACTIVATE_VOICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- // MONA - OS Integration -->
+        <receiver
+            android:name=".SideKeyReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <action android:name="com.mona.app.action.ACTIVATE_VOICE" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

@@ -21,6 +21,8 @@ import { UndoToast } from './components/UndoToast';
 import { PushToast } from './components/PushToast';
 import { RecurringExpenses } from './components/RecurringExpenses';
 import { RecurringConfirmModal } from './components/RecurringConfirmModal';
+// MONA - OS Integration
+import { MONAOSIntegrationBridge } from './components/MONAOSIntegrationBridge';
 import { RecurringProjection } from './components/RecurringProjection';
 import { FixedFlowCard } from './components/FixedFlowCard';
 import { BudgetsCard } from './components/BudgetsCard';
@@ -193,6 +195,8 @@ function AppContent() {
       </div>
 
       <UndoToast />
+      {/* MONA - OS Integration */}
+      <MONAOSIntegrationBridge />
       <PushToast />
       <RecurringConfirmModal />
       <MobileBottomNav active={tab} onChange={setTab} />
