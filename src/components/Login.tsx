@@ -175,7 +175,7 @@ export const Login: React.FC = () => {
                   src="/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg"
                   alt="Mona"
                   className="h-full w-full object-cover mix-blend-multiply"
-                  style={{ objectPosition: 'center 16%' }}
+                  style={{ objectPosition: 'center center' }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
@@ -220,7 +220,7 @@ export const Login: React.FC = () => {
         </section>
 
         {/* Login Form Section */}
-        <aside className="relative flex w-full shrink-0 items-center justify-center px-6 py-8 lg:h-full lg:w-[clamp(470px,35vw,545px)] lg:px-10">
+        <aside className="relative flex min-h-dvh w-full shrink-0 items-center justify-center px-6 py-10 lg:h-full lg:min-h-0 lg:w-[clamp(470px,35vw,545px)] lg:px-10">
           <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[#836637]/8 blur-3xl lg:block" />
           <div
             className="relative w-full max-w-[340px] mx-auto rounded-[24px] px-9 py-9 sm:max-w-[360px] sm:px-10 sm:py-10"
@@ -286,7 +286,7 @@ export const Login: React.FC = () => {
               </AnimatePresence>
 
               <div>
-                <FieldLabel>Correo electr\u00f3nico</FieldLabel>
+                <FieldLabel>{'Correo electr\u00f3nico'}</FieldLabel>
                 <div className="relative border-b pb-2" style={{ borderColor: palette.line }}>
                   <Mail className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
@@ -301,7 +301,7 @@ export const Login: React.FC = () => {
               </div>
 
               <div>
-                <FieldLabel>Contrase\u00f1a</FieldLabel>
+                <FieldLabel>{'Contrase\u00f1a'}</FieldLabel>
                 <div className="relative border-b pb-2" style={{ borderColor: palette.line }}>
                   <Lock className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
