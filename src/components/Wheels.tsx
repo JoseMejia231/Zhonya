@@ -630,13 +630,19 @@ const polar = (deg: number, r: number, cx = 0, cy = 0): PolarPoint => {
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 };
 
+const SPIN_TURNS = 9;
+const SPIN_DURATION_MS = 6800;
+const SPIN_OVERSHOOT_DEG = 10;
+
 const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onClose }) => {
   const { addTransaction, recordWheelSpin, settings } = useFinance();
   const reduceMotion = useReducedMotion();
   const [rotation, setRotation] = useState(0);
+  const [spinStartRotation, setSpinStartRotation] = useState(0);
   const [spinning, setSpinning] = useState(false);
   const [result, setResult] = useState<WheelSlice | null>(null);
   const [creating, setCreating] = useState(false);
+  const spinDuration = reduceMotion ? 0 : SPIN_DURATION_MS;
 
   // Compute angles for each slice based on weights.
   const totalWeight = wheel.slices.reduce(
@@ -686,21 +692,21 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
     const targetWithinSlice = winner.center + jitter;
 
     // Rotación final: extras enteros + lo que falte para que el centro quede arriba.
-    const extras = reduceMotion ? 0 : 360 * 5;
+    const extras = reduceMotion ? 0 : 360 * SPIN_TURNS;
     const currentMod = ((rotation % 360) + 360) % 360;
     const desired = (360 - targetWithinSlice) % 360;
     const delta = (desired - currentMod + 360) % 360;
     const final = rotation + extras + delta;
 
+    setSpinStartRotation(rotation);
     setRotation(final);
 
-    const duration = reduceMotion ? 0 : 4000;
     setTimeout(() => {
       setSpinning(false);
       setResult(winner.slice);
       success();
       recordWheelSpin(wheel.id, winner.slice.id);
-    }, duration + 50);
+    }, spinDuration + 50);
   };
 
   const handleCreateTx = async () => {
@@ -769,8 +775,28 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-white drop-shadow-lg" />
 
         <motion.div
-          animate={{ rotate: rotation }}
-          transition={{ duration: spinning ? 4 : 0, ease: [0.18, 0.85, 0.18, 1] }}
+          animate={
+            spinning && !reduceMotion
+              ? {
+                  rotate: [
+                    spinStartRotation,
+                    spinStartRotation - SPIN_OVERSHOOT_DEG,
+                    rotation + SPIN_OVERSHOOT_DEG,
+                    rotation,
+                  ],
+                  scale: [1, 1.015, 1.015, 1],
+                }
+              : { rotate: rotation, scale: 1 }
+          }
+          transition={
+            spinning && !reduceMotion
+              ? {
+                  duration: spinDuration / 1000,
+                  times: [0, 0.08, 0.88, 1],
+                  ease: ['easeOut', [0.12, 0.86, 0.18, 1], 'easeOut'],
+                }
+              : { duration: 0 }
+          }
           style={{ width: SIZE, height: SIZE }}
           className="relative"
         >
@@ -783,9 +809,10 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
             </defs>
             <circle cx={CX} cy={CY} r={R + 6} fill="white" />
             {sliceAngles.map((sa, i) => {
+              const span = sa.end - sa.start;
+              const isFullWheel = span >= 359.99;
               const start = polar(sa.start, R, CX, CY);
               const end = polar(sa.end, R, CX, CY);
-              const span = sa.end - sa.start;
               const largeArc = span > 180 ? 1 : 0;
               const path = `M ${CX} ${CY} L ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
               const labelPos = polar(sa.center, R * 0.65, CX, CY);
@@ -797,7 +824,11 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
                   : sa.slice.label;
               return (
                 <g key={sa.slice.id}>
-                  <path d={path} fill={color} stroke="white" strokeWidth={2} />
+                  {isFullWheel ? (
+                    <circle cx={CX} cy={CY} r={R} fill={color} stroke="white" strokeWidth={2} />
+                  ) : (
+                    <path d={path} fill={color} stroke="white" strokeWidth={2} />
+                  )}
                   <text
                     x={labelPos.x}
                     y={labelPos.y}
