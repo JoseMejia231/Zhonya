@@ -74,6 +74,7 @@ function AppContent() {
   const { user, loading } = useFinance();
   const [tab, setTabState] = useState<TabId>(readTabFromHash);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
@@ -138,7 +139,10 @@ function AppContent() {
               <button
                 type="button"
                 aria-label="Nueva entrada"
-                onClick={() => setTab('transactions')}
+                onClick={() => {
+                  setTab('transactions');
+                  setShowTransactionForm(true);
+                }}
                 className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(45,90,39,0.18)] transition-colors hover:bg-[#244920] active:scale-95"
               >
                 <span className="text-xl leading-none font-medium">+</span>
@@ -159,7 +163,12 @@ function AppContent() {
             aria-label={sectionLabel}
           >
             {tab === 'overview' && <OverviewSection />}
-            {tab === 'transactions' && <TransactionsSection onAdd={() => setTab('transactions')} />}
+            {tab === 'transactions' && (
+              <TransactionsSection
+                showForm={showTransactionForm}
+                setShowForm={setShowTransactionForm}
+              />
+            )}
             {tab === 'recurring' && (
               <div className="max-w-2xl mx-auto">
                 <RecurringExpenses />
@@ -226,18 +235,31 @@ const OverviewSection: React.FC = () => (
 );
 
 interface TransactionsSectionProps {
-  onAdd: () => void;
+  showForm: boolean;
+  setShowForm: (show: boolean) => void;
 }
-const TransactionsSection: React.FC<TransactionsSectionProps> = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
-    <div className="lg:col-span-5 xl:col-span-4 order-1">
-      <TransactionForm />
+const TransactionsSection: React.FC<TransactionsSectionProps> = ({ showForm, setShowForm }) => {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      <AnimatePresence initial={false}>
+        {showForm && (
+          <motion.div
+            key="tx-form-wrapper"
+            initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, overflow: 'hidden' }}
+            animate={reduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1, overflow: 'visible' }}
+            exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0, overflow: 'hidden' }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <TransactionForm onClose={() => setShowForm(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <TransactionList onAddNew={() => setShowForm(true)} />
     </div>
-    <div className="lg:col-span-7 xl:col-span-8 order-2 lg:h-[calc(100dvh-220px)]">
-      <TransactionList />
-    </div>
-  </div>
-);
+  );
+};
 
 const ANALYSIS_FILTERS = [
   { id: 'all' as const, label: 'Todo' },

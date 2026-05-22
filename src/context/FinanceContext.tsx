@@ -115,6 +115,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [recurringPrompt, setRecurringPrompt] = useState<{ recurringId: string; periodKey?: string } | null>(null);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
 
+  // Always-fresh ref for settings to avoid stale closures in async Firestore writes
+  const latestSettingsRef = React.useRef<UserSettings>(state.settings);
+  useEffect(() => {
+    latestSettingsRef.current = state.settings;
+  }, [state.settings]);
+
+  const buildSettingsPayload = (settings: UserSettings) => {
+    const allCats = [...(settings.incomeCategories || []), ...(settings.expenseCategories || [])];
+    const payload: Record<string, unknown> = {
+      currency: settings.currency || DEFAULT_SETTINGS.currency,
+      theme: settings.theme || DEFAULT_SETTINGS.theme,
+      categories: allCats,
+      incomeCategories: settings.incomeCategories || [],
+      expenseCategories: settings.expenseCategories || [],
+    };
+    if (settings.budgets && Object.keys(settings.budgets).length > 0) {
+      payload.budgets = settings.budgets;
+    }
+    return payload;
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -146,7 +167,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         }
         dispatch({ type: 'UPDATE_SETTINGS', payload: data });
       } else {
-        setDoc(settingsRef, DEFAULT_SETTINGS);
+        const payload = buildSettingsPayload(latestSettingsRef.current);
+        setDoc(settingsRef, payload);
       }
     });
 
@@ -268,22 +290,28 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user) return;
+    // Optimistic: update UI immediately
+    dispatch({ type: 'UPDATE_SETTINGS', payload: newSettings });
+    // Use ref for latest state to prevent stale closures on rapid calls
+    const merged = { ...latestSettingsRef.current, ...newSettings };
+    latestSettingsRef.current = merged;
+    // Build Firestore payload – include legacy 'categories' field for rule compat
+    const payload = buildSettingsPayload(merged);
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
-    await setDoc(settingsRef, { ...state.settings, ...newSettings });
+    await setDoc(settingsRef, payload);
   };
 
   const setCategoryBudget = async (category: string, amount: number | null) => {
     if (!user) return;
-    const next: Record<string, number> = { ...(state.settings.budgets ?? {}) };
+    const current = latestSettingsRef.current;
+    const next: Record<string, number> = { ...(current.budgets ?? {}) };
     if (amount === null || isNaN(amount) || amount <= 0) {
       delete next[category];
     } else {
       next[category] = Math.round(amount * 100) / 100;
     }
-    const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
-    const merged: UserSettings = { ...state.settings, budgets: next };
-    if (Object.keys(next).length === 0) delete (merged as Partial<UserSettings>).budgets;
-    await setDoc(settingsRef, merged);
+    const budgets = Object.keys(next).length > 0 ? next : undefined;
+    await updateSettings({ budgets } as Partial<UserSettings>);
   };
 
   const setFilter = (filter: FilterType) => {

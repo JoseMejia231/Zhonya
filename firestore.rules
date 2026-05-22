@@ -70,11 +70,15 @@ service cloud.firestore {
     }
 
     function isValidSettings(data) {
-      return hasRequiredFields(['currency', 'theme', 'categories']) &&
-             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'budgets']) &&
+      return hasRequiredFields(['currency', 'theme']) &&
+             // Must have either legacy 'categories' or new split fields
+             ('categories' in data || ('incomeCategories' in data && 'expenseCategories' in data)) &&
+             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'incomeCategories', 'expenseCategories', 'budgets']) &&
              data.currency is string && data.currency.size() > 0 && data.currency.size() < 10 &&
              data.theme in ['light', 'dark'] &&
-             data.categories is list && data.categories.size() < 50 &&
+             (!('categories' in data) || (data.categories is list && data.categories.size() < 50)) &&
+             (!('incomeCategories' in data) || (data.incomeCategories is list && data.incomeCategories.size() < 50)) &&
+             (!('expenseCategories' in data) || (data.expenseCategories is list && data.expenseCategories.size() < 50)) &&
              (!('budgets' in data) || (data.budgets is map && data.budgets.size() < 60));
     }
 
