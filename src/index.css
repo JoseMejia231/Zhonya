@@ -62,6 +62,17 @@
   .num {
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "cv11" 1;
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.05;
+  }
+
+  /* Ensure numeric values don't overflow card surfaces */
+  .bg-white.rounded-2xl {
+    overflow: hidden;
   }
 
   /* Premium Design Utilities */
