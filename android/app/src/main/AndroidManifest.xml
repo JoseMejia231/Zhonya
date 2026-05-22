@@ -43,6 +43,7 @@
             <intent-filter>
                 <action android:name="com.mona.app.action.OPEN" />
                 <action android:name="com.mona.app.action.VIEW_SUMMARY" />
+                <action android:name="com.mona.app.action.VIEW_DAILY_SPEND" />
                 <action android:name="com.mona.app.action.REGISTER_EXPENSE" />
                 <action android:name="com.mona.app.action.VOICE_COMMAND" />
                 <category android:name="android.intent.category.DEFAULT" />

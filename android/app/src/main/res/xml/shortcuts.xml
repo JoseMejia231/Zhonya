@@ -41,6 +41,16 @@
     </capability>
 
     <!-- // MONA - OS Integration -->
+    <capability
+        android:name="custom.actions.intent.CHECK_DAILY_SPEND"
+        app:queryPatterns="@array/mona_daily_spend_queries">
+        <intent
+            android:action="com.mona.app.action.VIEW_DAILY_SPEND"
+            android:targetClass="com.mona.app.MainActivity"
+            android:targetPackage="com.mona.app" />
+    </capability>
+
+    <!-- // MONA - OS Integration -->
     <shortcut
         android:enabled="true"
         android:icon="@drawable/ic_mona_shortcut"

@@ -1,15 +1,17 @@
 // MONA - OS Integration
 import { useEffect, useRef } from 'react';
 import { useFinance } from '../context/FinanceContext';
+import type { FilterType } from '../types';
 
 // MONA - OS Integration
-type MONAOSAction = 'open' | 'viewSummary' | 'recordExpense' | 'recordTransaction';
+type MONAOSAction = 'open' | 'viewSummary' | 'recordExpense' | 'recordTransaction' | 'viewDailySpend';
 
 // MONA - OS Integration
 const COMMAND_ACTION_KEYS = ['monaAction', 'action'];
 const COMMAND_AMOUNT_KEYS = ['monaAmount', 'amount'];
 const COMMAND_CATEGORY_KEYS = ['monaCategory', 'category'];
 const COMMAND_DESCRIPTION_KEYS = ['monaDescription', 'description', 'name'];
+const COMMAND_FILTER_KEYS = ['monaFilter', 'filter'];
 
 // MONA - OS Integration
 function readParam(params: URLSearchParams, keys: string[]): string {
@@ -29,6 +31,29 @@ function normalizeAction(value: string): MONAOSAction | null {
   if (['recordtransaction', 'addtransaction', 'registrarmovimiento', 'movimiento'].includes(normalized)) {
     return 'recordTransaction';
   }
+  if (
+    [
+      'viewdailyspend',
+      'dailyspend',
+      'cuantogastehoy',
+      'cuantohegastadohoy',
+      'gastosdehoy',
+      'gastodehoy',
+      'gastohoy',
+    ].includes(normalized)
+  ) {
+    return 'viewDailySpend';
+  }
+  return null;
+}
+
+// MONA - OS Integration
+function normalizeFilter(value: string): FilterType | null {
+  const normalized = value.trim().toLowerCase();
+  if (['day', 'today', 'hoy'].includes(normalized)) return 'day';
+  if (['month', 'mes'].includes(normalized)) return 'month';
+  if (['year', 'ano'].includes(normalized)) return 'year';
+  if (normalized === 'all' || normalized === 'todo') return 'all';
   return null;
 }
 
@@ -47,7 +72,7 @@ function cleanUrlToHash(hash: '#/overview' | '#/transactions') {
 
 // MONA - OS Integration
 export function MONAOSIntegrationBridge() {
-  const { user, addTransaction, settings } = useFinance();
+  const { user, addTransaction, settings, setFilter } = useFinance();
   const handledCommandRef = useRef<string | null>(null);
 
   // MONA - OS Integration
@@ -61,6 +86,15 @@ export function MONAOSIntegrationBridge() {
     const commandId = params.get('monaCommandId') || window.location.search;
     if (handledCommandRef.current === commandId) return;
     handledCommandRef.current = commandId;
+
+    const filter = normalizeFilter(readParam(params, COMMAND_FILTER_KEYS));
+    if (filter) setFilter(filter);
+
+    if (action === 'viewDailySpend') {
+      setFilter('day');
+      cleanUrlToHash('#/transactions');
+      return;
+    }
 
     if (action === 'open' || action === 'viewSummary') {
       cleanUrlToHash('#/overview');
@@ -85,7 +119,7 @@ export function MONAOSIntegrationBridge() {
       description,
       date: new Date().toISOString(),
     }).finally(() => cleanUrlToHash('#/transactions'));
-  }, [addTransaction, settings.categories, settings.expenseCategories, user]);
+  }, [addTransaction, setFilter, settings.categories, settings.expenseCategories, user]);
 
   return null;
 }

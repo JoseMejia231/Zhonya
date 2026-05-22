@@ -16,6 +16,7 @@ import java.util.regex.Pattern;
 public final class MONAIntentHandler {
     public static final String ACTION_OPEN = "com.mona.app.action.OPEN";
     public static final String ACTION_VIEW_SUMMARY = "com.mona.app.action.VIEW_SUMMARY";
+    public static final String ACTION_VIEW_DAILY_SPEND = "com.mona.app.action.VIEW_DAILY_SPEND";
     public static final String ACTION_REGISTER_EXPENSE = "com.mona.app.action.REGISTER_EXPENSE";
     public static final String ACTION_ACTIVATE_VOICE = "com.mona.app.action.ACTIVATE_VOICE";
     public static final String ACTION_VOICE_COMMAND = "com.mona.app.action.VOICE_COMMAND";
@@ -56,6 +57,7 @@ public final class MONAIntentHandler {
 
         if (ACTION_REGISTER_EXPENSE.equals(action)) return recordExpense(intent);
         if (ACTION_VIEW_SUMMARY.equals(action)) return MONACommand.viewSummary();
+        if (ACTION_VIEW_DAILY_SPEND.equals(action)) return MONACommand.viewDailySpend();
         if (ACTION_OPEN.equals(action) || Intent.ACTION_MAIN.equals(action)) return MONACommand.open();
         return MONACommand.open();
     }
@@ -65,11 +67,15 @@ public final class MONAIntentHandler {
         String original = voiceText == null ? "" : voiceText.trim();
         String normalized = normalize(original);
 
+        if (isDailySpendQuery(normalized)) {
+            return MONACommand.viewDailySpend();
+        }
+
         if (containsAny(normalized, "resumen", "balance", "principal", "inicio", "dashboard")) {
             return MONACommand.viewSummary();
         }
 
-        if (containsAny(normalized, "gasto", "gaste", "movimiento", "transaccion", "registrar", "guardar", "agregar")) {
+        if (containsAny(normalized, "gasto", "gaste", "movimiento", "transaccion", "registrar", "registra", "guardar", "agregar", "anota")) {
             String amount = extractAmount(normalized);
             String category = extractKnownCategory(normalized);
             if (TextUtils.isEmpty(category)) category = extractCategory(normalized);
@@ -102,6 +108,9 @@ public final class MONAIntentHandler {
         if (!TextUtils.isEmpty(safeCommand.description)) {
             builder.appendQueryParameter("monaDescription", safeCommand.description);
         }
+        if (!TextUtils.isEmpty(safeCommand.filter)) {
+            builder.appendQueryParameter("monaFilter", safeCommand.filter);
+        }
 
         return builder.build().toString() + safeCommand.hash;
     }
@@ -113,6 +122,7 @@ public final class MONAIntentHandler {
         String action = firstNonEmpty(uri.getQueryParameter(EXTRA_ACTION), host, path);
 
         if (containsAny(action, "summary", "resumen", "overview")) return MONACommand.viewSummary();
+        if (isDailySpendAction(action)) return MONACommand.viewDailySpend();
         if (containsAny(action, "expense", "gasto", "transaction", "movimiento")) {
             return MONACommand.recordExpense(
                 uri.getQueryParameter("amount"),
@@ -127,6 +137,7 @@ public final class MONAIntentHandler {
     // MONA - OS Integration
     private static MONACommand fromActionName(String actionName, Intent intent) {
         String normalized = normalize(actionName);
+        if (isDailySpendAction(normalized)) return MONACommand.viewDailySpend();
         if (containsAny(normalized, "summary", "resumen")) return MONACommand.viewSummary();
         if (containsAny(normalized, "expense", "gasto", "transaction", "movimiento")) return recordExpense(intent);
         if (containsAny(normalized, "open", "abrir")) return MONACommand.open();
@@ -136,6 +147,7 @@ public final class MONAIntentHandler {
     // MONA - OS Integration
     private static MONACommand fromFeature(String feature) {
         String normalized = normalize(feature);
+        if (isDailySpendAction(normalized)) return MONACommand.viewDailySpend();
         if (containsAny(normalized, "summary", "resumen", "overview")) return MONACommand.viewSummary();
         if (containsAny(normalized, "expense", "gasto", "transaction", "movimiento")) {
             return MONACommand.recordExpense("", "", "");
@@ -172,12 +184,43 @@ public final class MONAIntentHandler {
     // MONA - OS Integration
     private static String extractKnownCategory(String text) {
         if (text.contains("comida") || text.contains("almuerzo") || text.contains("cena")) return "Comida";
-        if (text.contains("transporte") || text.contains("taxi") || text.contains("uber")) return "Transporte";
+        if (text.contains("transporte") || text.contains("taxi") || text.contains("uber") || text.contains("pasaje") || text.contains("guagua") || text.contains("metro")) {
+            return "Transporte";
+        }
         if (text.contains("entretenimiento") || text.contains("cine")) return "Entretenimiento";
         if (text.contains("salud") || text.contains("medicina") || text.contains("farmacia")) return "Salud";
-        if (text.contains("compra") || text.contains("compras")) return "Compras";
+        if (text.contains("compra") || text.contains("compras") || text.contains("colmado") || text.contains("super")) return "Compras";
         if (text.contains("servicio") || text.contains("servicios")) return "Servicios";
+        if (text.contains("hormiga") || text.contains("snack") || text.contains("agua") || text.contains("botella")) return "Otros Gastos";
         return "";
+    }
+
+    // MONA - OS Integration
+    private static boolean isDailySpendQuery(String normalized) {
+        if (!normalized.contains("hoy")) return false;
+        return containsAny(
+            normalized,
+            "cuanto",
+            "total",
+            "gastado",
+            "gastos de hoy",
+            "gasto de hoy"
+        );
+    }
+
+    // MONA - OS Integration
+    private static boolean isDailySpendAction(String normalized) {
+        return containsAny(
+            normalized,
+            "viewdailyspend",
+            "dailyspend",
+            "daily",
+            "day",
+            "gastos de hoy",
+            "gasto de hoy",
+            "gastoshoy",
+            "gastodehoy"
+        );
     }
 
     // MONA - OS Integration
@@ -228,6 +271,7 @@ public final class MONAIntentHandler {
     // MONA - OS Integration
     private static String toAndroidAction(String webAction) {
         if ("recordExpense".equals(webAction) || "recordTransaction".equals(webAction)) return ACTION_REGISTER_EXPENSE;
+        if ("viewDailySpend".equals(webAction)) return ACTION_VIEW_DAILY_SPEND;
         if ("viewSummary".equals(webAction)) return ACTION_VIEW_SUMMARY;
         return ACTION_OPEN;
     }
@@ -239,25 +283,31 @@ public final class MONAIntentHandler {
         public final String category;
         public final String description;
         public final String hash;
+        public final String filter;
 
-        private MONACommand(String action, String amount, String category, String description, String hash) {
+        private MONACommand(String action, String amount, String category, String description, String hash, String filter) {
             this.action = action;
             this.amount = amount == null ? "" : amount;
             this.category = category == null ? "" : category;
             this.description = description == null ? "" : description;
             this.hash = hash;
+            this.filter = filter == null ? "" : filter;
         }
 
         public static MONACommand open() {
-            return new MONACommand("open", "", "", "", "#/overview");
+            return new MONACommand("open", "", "", "", "#/overview", "");
         }
 
         public static MONACommand viewSummary() {
-            return new MONACommand("viewSummary", "", "", "", "#/overview");
+            return new MONACommand("viewSummary", "", "", "", "#/overview", "");
+        }
+
+        public static MONACommand viewDailySpend() {
+            return new MONACommand("viewDailySpend", "", "", "", "#/transactions", "day");
         }
 
         public static MONACommand recordExpense(String amount, String category, String description) {
-            return new MONACommand("recordExpense", amount, category, description, "#/transactions");
+            return new MONACommand("recordExpense", amount, category, description, "#/transactions", "");
         }
     }
 }
