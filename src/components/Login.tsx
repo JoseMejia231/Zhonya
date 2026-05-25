@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../firebase';
+import { resetPassword, signInWithGoogle, signInWithEmail, signUpWithEmail } from '../firebase';
 import {
   Shield,
   Mail,
@@ -83,12 +83,29 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setNotice(null);
+
+    if (!email.trim()) {
+      setError('Escribe tu correo electr\u00f3nico.');
+      return;
+    }
+    if (!password) {
+      setError('Escribe tu contrase\u00f1a.');
+      return;
+    }
+    if (mode === 'signup' && password.length < 6) {
+      setError('La contrase\u00f1a debe tener al menos 6 caracteres.');
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (mode === 'signin') {
@@ -105,6 +122,7 @@ export const Login: React.FC = () => {
 
   const handleGoogle = async () => {
     setError(null);
+    setNotice(null);
     setGoogleLoading(true);
     try {
       await signInWithGoogle();
@@ -119,9 +137,30 @@ export const Login: React.FC = () => {
     if (mode === next) return;
     setMode(next);
     setError(null);
+    setNotice(null);
   };
 
-  const busy = submitting || googleLoading;
+  const handlePasswordReset = async () => {
+    setError(null);
+    setNotice(null);
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setError('Escribe tu correo para enviarte el enlace.');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await resetPassword(targetEmail);
+      setNotice('Te enviamos un enlace para restablecer tu contrase\u00f1a.');
+    } catch (err) {
+      setError(mapAuthError((err as { code?: string })?.code ?? ''));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const busy = submitting || googleLoading || resetLoading;
   const primaryCta = mode === 'signin' ? 'INICIAR SESI\u00d3N' : 'CREAR CUENTA';
 
   return (
@@ -131,7 +170,7 @@ export const Login: React.FC = () => {
         className="absolute inset-0 hidden lg:block z-0"
         style={{
           background:
-            'radial-gradient(circle at 18% 18%, rgba(94,115,86,0.12), transparent 28%), radial-gradient(circle at 58% 64%, rgba(204,199,168,0.22), transparent 30%), linear-gradient(90deg, #F0EDE4 0%, #F3F0E8 62%, #E8E4D9 62%, #E8E4D9 100%)',
+            'radial-gradient(circle at 18% 18%, rgba(94,115,86,0.12), transparent 28%), radial-gradient(circle at 52% 64%, rgba(204,199,168,0.20), transparent 30%), linear-gradient(90deg, #F0EDE4 0%, #F3F0E8 60%, #E8E4D9 60%, #E8E4D9 100%)',
         }}
       />
       {/* Mobile uniform background */}
@@ -157,7 +196,7 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="relative z-10 flex flex-1 items-center justify-center py-8 lg:py-0">
-            <div className="relative aspect-square w-[min(84vw,500px)] sm:w-[min(74vw,540px)] lg:w-[min(54vw,83dvh,585px)] lg:translate-x-[3%]">
+            <div className="relative aspect-square w-[min(84vw,500px)] sm:w-[min(74vw,540px)] lg:w-[min(48vw,76dvh,540px)] lg:translate-x-[1%]">
               <div className="absolute inset-[-7%] rounded-full border border-[#B8B19E]/55" />
               <div className="absolute -left-[8%] bottom-[10%] h-[31%] w-[31%] rounded-[34%] bg-[#5E7356] opacity-90" />
               <div className="absolute right-[-3%] top-[18%] h-[32%] w-[32%] rounded-full bg-[#CBD4C0]/55 blur-[1px]" />
@@ -220,45 +259,51 @@ export const Login: React.FC = () => {
         </section>
 
         {/* Login Form Section */}
-        <aside className="relative flex min-h-dvh w-full shrink-0 items-center justify-center px-6 py-10 lg:h-full lg:min-h-0 lg:w-[clamp(470px,35vw,545px)] lg:px-10">
+        <aside className="relative flex min-h-dvh w-full shrink-0 items-center justify-center px-5 py-6 lg:h-full lg:min-h-0 lg:w-[clamp(440px,36vw,540px)] lg:px-10">
           <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[#836637]/8 blur-3xl lg:block" />
           <div
-            className="relative w-full max-w-[340px] mx-auto rounded-[24px] px-9 py-9 sm:max-w-[360px] sm:px-10 sm:py-10"
+            className="relative w-full max-w-[335px] mx-auto rounded-[22px] px-7 py-7 sm:max-w-[360px] sm:px-9 sm:py-8 lg:px-9 lg:py-9"
             style={{
               background: palette.card,
-              boxShadow: '0 28px 58px -18px rgba(32,45,30,0.20)',
+              boxShadow: '0 24px 52px -22px rgba(32,45,30,0.22)',
               border: '1px solid rgba(255,255,255,0.58)',
             }}
           >
-            <h1 className="mb-1 text-[24px] font-extrabold leading-tight tracking-[-0.04em] text-[#202D1E]">
+            <div className="mb-6 flex items-center gap-3 lg:hidden">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#3C4A34]/10 bg-white/60 shadow-sm">
+                <MonaMark size={23} />
+              </div>
+              <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#202D1E]">MONA</span>
+            </div>
+
+            <h1 className="mb-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em] text-[#202D1E] sm:text-[24px]">
               {mode === 'signin' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
             </h1>
-            <p className="mb-8 text-[11px] font-medium text-[#202D1E]/60">
-              {mode === 'signin' ? 'Ingresa tus datos para continuar.' : '\u00danete a la nueva era financiera.'}
+            <p className="mb-6 text-[11px] font-medium text-[#202D1E]/60 sm:mb-7">
+              {mode === 'signin' ? 'Accede a tu panel financiero MONA.' : '\u00danete a tu nuevo centro financiero.'}
             </p>
 
-            <div className="mb-8 flex gap-6 border-b pb-2" style={{ borderColor: 'rgba(32,45,30,0.11)' }}>
+            <div className="mb-6 flex gap-2 rounded-xl border border-[#202D1E]/10 bg-white/25 p-1 sm:mb-7">
               {(['signin', 'signup'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => switchMode(m)}
-                  className="relative pb-2 text-[10px] font-black uppercase tracking-[0.18em] transition-colors"
+                  className="relative flex-1 overflow-hidden rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-colors"
                   style={{ color: mode === m ? palette.ink : 'rgba(32,45,30,0.38)' }}
                 >
-                  {m === 'signin' ? 'Entrar' : 'Unirse'}
                   {mode === m && (
                     <motion.span
                       layoutId="login-tab"
-                      className="absolute bottom-[-3px] left-0 h-[2px] w-full"
-                      style={{ background: palette.ink }}
+                      className="absolute inset-0 rounded-lg bg-white shadow-sm"
                     />
                   )}
+                  <span className="relative z-10">{m === 'signin' ? 'Entrar' : 'Unirse'}</span>
                 </button>
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <AnimatePresence mode="wait">
                 {mode === 'signup' && (
                   <motion.div
@@ -269,14 +314,16 @@ export const Login: React.FC = () => {
                     transition={{ duration: 0.22 }}
                     className="overflow-hidden"
                   >
-                    <FieldLabel>Tu nombre</FieldLabel>
-                    <div className="relative border-b pb-2" style={{ borderColor: palette.line }}>
+                    <FieldLabel htmlFor="login-name">Tu nombre</FieldLabel>
+                    <div className="relative border-b border-[#202D1E]/15 pb-2 transition-colors focus-within:border-[#324B2C]">
                       <User className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                       <input
+                        id="login-name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Jane Doe"
+                        autoComplete="name"
                         className="w-full bg-transparent pl-7 pr-3 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                         style={{ caretColor: palette.green }}
                       />
@@ -286,14 +333,17 @@ export const Login: React.FC = () => {
               </AnimatePresence>
 
               <div>
-                <FieldLabel>{'Correo electr\u00f3nico'}</FieldLabel>
-                <div className="relative border-b pb-2" style={{ borderColor: palette.line }}>
+                <FieldLabel htmlFor="login-email">{'Correo electr\u00f3nico'}</FieldLabel>
+                <div className="relative border-b border-[#202D1E]/15 pb-2 transition-colors focus-within:border-[#324B2C]">
                   <Mail className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
+                    id="login-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@correo.com"
+                    autoComplete="email"
+                    required
                     className="w-full bg-transparent pl-7 pr-3 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                     style={{ caretColor: palette.green }}
                   />
@@ -301,14 +351,18 @@ export const Login: React.FC = () => {
               </div>
 
               <div>
-                <FieldLabel>{'Contrase\u00f1a'}</FieldLabel>
-                <div className="relative border-b pb-2" style={{ borderColor: palette.line }}>
+                <FieldLabel htmlFor="login-password">{'Contrase\u00f1a'}</FieldLabel>
+                <div className="relative border-b border-[#202D1E]/15 pb-2 transition-colors focus-within:border-[#324B2C]">
                   <Lock className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="********"
+                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                    minLength={mode === 'signup' ? 6 : undefined}
+                    required
                     className="w-full bg-transparent pl-7 pr-8 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                     style={{ caretColor: palette.green }}
                   />
@@ -321,7 +375,23 @@ export const Login: React.FC = () => {
                     {showPassword ? <EyeOff size={15} strokeWidth={2} /> : <Eye size={15} strokeWidth={2} />}
                   </button>
                 </div>
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={busy}
+                    className="mt-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#324B2C]/70 transition-colors hover:text-[#324B2C] disabled:opacity-50"
+                  >
+                    {resetLoading ? 'Enviando...' : 'Olvid\u00e9 mi contrase\u00f1a'}
+                  </button>
+                )}
               </div>
+
+              {notice && (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-emerald-700">
+                  <span className="text-[9px] font-bold uppercase tracking-wider">{notice}</span>
+                </div>
+              )}
 
               {error && (
                 <div className="flex items-center gap-2 rounded-lg border border-red-100 bg-red-50 p-3 text-red-600">
@@ -375,8 +445,8 @@ export const Login: React.FC = () => {
   );
 };
 
-const FieldLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <label className="mb-2 block text-[8px] font-black uppercase tracking-[0.21em] text-[#202D1E]/55">
+const FieldLabel: React.FC<{ children: React.ReactNode; htmlFor: string }> = ({ children, htmlFor }) => (
+  <label htmlFor={htmlFor} className="mb-2 block text-[8px] font-black uppercase tracking-[0.21em] text-[#202D1E]/55">
     {children}
   </label>
 );

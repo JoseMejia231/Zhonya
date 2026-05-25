@@ -36,7 +36,10 @@ interface FinanceContextType extends FinanceState {
   recurring: RecurringExpense[];
   notificationStatus: NotificationPermission | 'unsupported';
   enableNotifications: () => Promise<boolean>;
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'uid'>) => Promise<void>;
+  addTransaction: (
+    transaction: Omit<Transaction, 'id' | 'uid'>,
+    options?: { syncGoalBalance?: boolean }
+  ) => Promise<void>;
   updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'uid'>>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
@@ -63,7 +66,7 @@ interface FinanceContextType extends FinanceState {
   inAppNotification: { title: string; body: string } | null;
   dismissInAppNotification: () => void;
   savingsGoals: SavingsGoal[];
-  upsertSavingsGoal: (goal: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }) => Promise<void>;
+  upsertSavingsGoal: (goal: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }) => Promise<string>;
   deleteSavingsGoal: (id: string) => Promise<void>;
 }
 
@@ -136,6 +139,93 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return payload;
   };
 
+  const isPermissionDenied = (error: unknown) =>
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: string }).code === 'permission-denied';
+
+  const goalLinksKey = (uid: string) => `mona_goal_tx_links_${uid}`;
+
+  const readGoalLinks = (uid: string): Record<string, string> => {
+    try {
+      return JSON.parse(localStorage.getItem(goalLinksKey(uid)) || '{}');
+    } catch {
+      return {};
+    }
+  };
+
+  const writeGoalLink = (uid: string, transactionId: string, goalId: string) => {
+    const links = readGoalLinks(uid);
+    links[transactionId] = goalId;
+    localStorage.setItem(goalLinksKey(uid), JSON.stringify(links));
+  };
+
+  const deleteGoalLink = (uid: string, transactionId: string) => {
+    const links = readGoalLinks(uid);
+    if (!(transactionId in links)) return;
+    delete links[transactionId];
+    localStorage.setItem(goalLinksKey(uid), JSON.stringify(links));
+  };
+
+  const withLocalGoalLink = (uid: string, transaction: Transaction): Transaction => {
+    if (transaction.goalId) return transaction;
+    const goalId = readGoalLinks(uid)[transaction.id];
+    return goalId ? { ...transaction, goalId } : transaction;
+  };
+
+  const setTransactionDoc = async (transaction: Transaction) => {
+    const transactionRef = doc(db, 'users', transaction.uid, 'transactions', transaction.id);
+    try {
+      await setDoc(transactionRef, transaction);
+    } catch (error) {
+      if (transaction.goalId && isPermissionDenied(error)) {
+        console.warn(
+          '[MONA] Firestore rules rejected transaction.goalId. Saving transaction without goalId and keeping the goal link locally.'
+        );
+        const { goalId, ...firestoreSafeTransaction } = transaction;
+        await setDoc(transactionRef, firestoreSafeTransaction);
+        writeGoalLink(transaction.uid, transaction.id, goalId);
+        return;
+      }
+      throw error;
+    }
+  };
+
+  const normalizeMonthlyDays = (value: unknown) =>
+    Array.from(
+      new Set(
+        (Array.isArray(value) ? value : [value ?? 1])
+          .map((d) => Math.max(1, Math.min(31, Math.round(Number(d) || 1))))
+      )
+    )
+      .sort((a, b) => a - b)
+      .slice(0, 2);
+
+  const monthlyDayValue = (value: unknown) => {
+    const days = normalizeMonthlyDays(value);
+    return days.length > 1 ? days : days[0];
+  };
+
+  const writeRecurring = async (id: string, payload: RecurringExpense) => {
+    const recurringRef = doc(db, 'users', payload.uid, 'recurringExpenses', id);
+    try {
+      await setDoc(recurringRef, payload);
+    } catch (error) {
+      if (Array.isArray(payload.dayOfMonth) && isPermissionDenied(error)) {
+        console.warn(
+          '[MONA] Firestore rules rejected multiple monthly days. Deploy firestore.rules to enable both days.'
+        );
+        await setDoc(recurringRef, {
+          ...payload,
+          dayOfMonth: payload.dayOfMonth[0],
+        });
+        return;
+      }
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -175,7 +265,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const transactionsRef = collection(db, 'users', user.uid, 'transactions');
     const q = query(transactionsRef, orderBy('date', 'desc'));
     const unsubscribeTransactions = onSnapshot(q, (snapshot) => {
-      const transactions = snapshot.docs.map((doc) => doc.data() as Transaction);
+      const transactions = snapshot.docs.map((doc) => withLocalGoalLink(user.uid, doc.data() as Transaction));
       dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
       setLoading(false);
     });
@@ -241,7 +331,27 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     return true;
   };
 
-  const addTransaction = async (t: Omit<Transaction, 'id' | 'uid'>) => {
+  const applySavingsGoalDelta = async (goalId: string, delta: number) => {
+    if (!user || !delta) return;
+    const roundedDelta = Math.round(delta * 100) / 100;
+    setSavingsGoals((prev) => {
+      const updated = prev.map((goal) =>
+        goal.id === goalId
+          ? {
+              ...goal,
+              currentAmount: Math.max(0, Math.round((goal.currentAmount + roundedDelta) * 100) / 100),
+            }
+          : goal
+      );
+      localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const addTransaction = async (
+    t: Omit<Transaction, 'id' | 'uid'>,
+    options?: { syncGoalBalance?: boolean }
+  ) => {
     if (!user) return;
     const id = crypto.randomUUID();
     const newTransaction: Transaction = {
@@ -249,12 +359,36 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       id,
       uid: user.uid,
     };
-    await setDoc(doc(db, 'users', user.uid, 'transactions', id), newTransaction);
+    await setTransactionDoc(newTransaction);
+    if (options?.syncGoalBalance && newTransaction.goalId) {
+      await applySavingsGoalDelta(newTransaction.goalId, newTransaction.amount);
+    }
   };
 
   const updateTransaction = async (id: string, updates: Partial<Omit<Transaction, 'id' | 'uid'>>) => {
     if (!user) return;
+    const previous = state.transactions.find((t) => t.id === id) ?? null;
     await setDoc(doc(db, 'users', user.uid, 'transactions', id), updates, { merge: true });
+    if (previous) {
+      const next: Transaction = {
+        ...previous,
+        ...updates,
+        id: previous.id,
+        uid: previous.uid,
+      };
+
+      if (previous.goalId && previous.goalId === next.goalId) {
+        const delta = next.amount - previous.amount;
+        if (delta) await applySavingsGoalDelta(previous.goalId, delta);
+      } else {
+        if (previous.goalId) {
+          await applySavingsGoalDelta(previous.goalId, -previous.amount);
+        }
+        if (next.goalId) {
+          await applySavingsGoalDelta(next.goalId, next.amount);
+        }
+      }
+    }
   };
 
   const clearUndoTimer = () => {
@@ -268,7 +402,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return;
     const tx = state.transactions.find((t) => t.id === id) ?? null;
     await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+    deleteGoalLink(user.uid, id);
     if (tx) {
+      if (tx.goalId) {
+        await applySavingsGoalDelta(tx.goalId, -tx.amount);
+      }
       setLastDeleted(tx);
       clearUndoTimer();
       undoTimerRef.current = setTimeout(() => setLastDeleted(null), 5000);
@@ -280,7 +418,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const tx = lastDeleted;
     clearUndoTimer();
     setLastDeleted(null);
-    await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
+    await setTransactionDoc(tx);
+    if (tx.goalId) {
+      await applySavingsGoalDelta(tx.goalId, tx.amount);
+    }
   };
 
   const dismissUndo = () => {
@@ -341,7 +482,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       enabled: rec.enabled,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       ...(rec.frequency === 'monthly'
-        ? { dayOfMonth: Math.max(1, Math.min(31, Math.round(rec.dayOfMonth ?? 1))) }
+        ? {
+            dayOfMonth: monthlyDayValue(rec.dayOfMonth),
+          }
         : {}),
       ...(rec.frequency === 'weekly'
         ? {
@@ -356,7 +499,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...(existing?.lastNotifiedKey ? { lastNotifiedKey: existing.lastNotifiedKey } : {}),
     };
     void serverTimestamp;
-    await setDoc(doc(db, 'users', user.uid, 'recurringExpenses', id), payload);
+    await writeRecurring(id, payload);
   };
 
   const toggleRecurring = async (id: string, enabled: boolean) => {
@@ -413,7 +556,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const upsertSavingsGoal = async (
     g: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }
   ) => {
-    if (!user) return;
+    if (!user) return '';
     const id = g.id ?? crypto.randomUUID();
     const existing = savingsGoals.find((x) => x.id === id);
     const payload: SavingsGoal = {
@@ -433,6 +576,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
       return updated;
     });
+    return id;
   };
 
   const deleteSavingsGoal = async (id: string) => {

@@ -31,7 +31,7 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => {
-  const { addTransaction, settings, updateSettings, transactions, savingsGoals, upsertSavingsGoal } = useFinance();
+  const { addTransaction, settings, updateSettings, transactions, savingsGoals } = useFinance();
   const [type, setType] = useState<TransactionType>('expense');
 
   const incomeCats = [...(settings.incomeCategories || settings.categories || [])];
@@ -144,7 +144,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
     return [10, 20, 50, 100];
   }, [localCurrency]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
 
@@ -154,32 +154,27 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
 
     const parsedAmount = Number(amount);
 
-    addTransaction({
-      amount: parsedAmount,
-      type,
-      category,
-      description,
-      date: localDate.toISOString(),
-    });
+    try {
+      await addTransaction({
+        amount: parsedAmount,
+        type,
+        category,
+        description,
+        date: localDate.toISOString(),
+        ...(category === 'Metas' && selectedGoalId ? { goalId: selectedGoalId } : {})
+      }, { syncGoalBalance: category === 'Metas' && Boolean(selectedGoalId) });
 
-    if (category === 'Metas' && selectedGoalId) {
-      const targetGoal = savingsGoals.find(g => g.id === selectedGoalId);
-      if (targetGoal) {
-        upsertSavingsGoal({
-          ...targetGoal,
-          currentAmount: targetGoal.currentAmount + parsedAmount
-        });
-      }
+      setAmount('');
+      setDescription('');
+      setJustSaved(true);
+      success();
+      setTimeout(() => {
+        setJustSaved(false);
+        onClose?.();
+      }, 1200);
+    } catch (error) {
+      console.error('[MONA] Error saving transaction:', error);
     }
-
-    setAmount('');
-    setDescription('');
-    setJustSaved(true);
-    success();
-    setTimeout(() => {
-      setJustSaved(false);
-      onClose?.();
-    }, 1200);
   };
 
   const handleTypeChange = (newType: TransactionType) => {

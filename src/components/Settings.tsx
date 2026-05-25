@@ -50,6 +50,20 @@ export const Settings: React.FC = () => {
   const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
   const [showBalance, setShowBalance] = useState(true);
   const [biometrics, setBiometrics] = useState(true);
+  const contentPanelRef = React.useRef<HTMLDivElement>(null);
+
+  const selectSection = (section: SettingsSection, scrollToContent = false) => {
+    setActiveSection(section);
+
+    if (!scrollToContent || !window.matchMedia('(max-width: 1023px)').matches) return;
+
+    window.requestAnimationFrame(() => {
+      contentPanelRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+  };
 
   React.useEffect(() => {
     if (darkMode) {
@@ -223,7 +237,7 @@ export const Settings: React.FC = () => {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 p-10 overflow-y-auto no-scrollbar">
+        <div ref={contentPanelRef} className="flex-1 p-10 overflow-y-auto no-scrollbar scroll-mt-24">
           {activeSection === 'general' && (
             <div className="max-w-3xl space-y-12">
               <Section title="Base del Sistema" subtitle="Ajustes críticos de moneda y sincronización.">
@@ -476,33 +490,33 @@ export const Settings: React.FC = () => {
             {/* Sistema */}
             <div className="space-y-1">
               <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Sistema</p>
-              <NavButton active={activeSection === 'general'} onClick={() => setActiveSection('general')} icon={<SettingsIcon size={16} />} label="General" />
-              <NavButton active={activeSection === 'appearance'} onClick={() => setActiveSection('appearance')} icon={<Palette size={16} />} label="Apariencia" />
-              <NavButton active={activeSection === 'notifications'} onClick={() => setActiveSection('notifications')} icon={<Bell size={16} />} label="Notificaciones" />
+              <NavButton active={activeSection === 'general'} onClick={() => selectSection('general', true)} icon={<SettingsIcon size={16} />} label="General" />
+              <NavButton active={activeSection === 'appearance'} onClick={() => selectSection('appearance', true)} icon={<Palette size={16} />} label="Apariencia" />
+              <NavButton active={activeSection === 'notifications'} onClick={() => selectSection('notifications', true)} icon={<Bell size={16} />} label="Notificaciones" />
             </div>
             {/* Seguridad */}
             <div className="space-y-1">
               <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Seguridad</p>
-              <NavButton active={activeSection === 'security'} onClick={() => setActiveSection('security')} icon={<ShieldCheck size={16} />} label="Protección" />
-              <NavButton active={activeSection === 'team'} onClick={() => setActiveSection('team')} icon={<Users size={16} />} label="Equipo" />
+              <NavButton active={activeSection === 'security'} onClick={() => selectSection('security', true)} icon={<ShieldCheck size={16} />} label="Protección" />
+              <NavButton active={activeSection === 'team'} onClick={() => selectSection('team', true)} icon={<Users size={16} />} label="Equipo" />
             </div>
             {/* Negocio */}
             <div className="space-y-1">
               <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Negocio</p>
-              <NavButton active={activeSection === 'billing'} onClick={() => setActiveSection('billing')} icon={<CreditCard size={16} />} label="Suscripción" />
-              <NavButton active={activeSection === 'integrations'} onClick={() => setActiveSection('integrations')} icon={<Share2 size={16} />} label="Integraciones" />
-              <NavButton active={activeSection === 'data'} onClick={() => setActiveSection('data')} icon={<Database size={16} />} label="Bóveda de Datos" />
+              <NavButton active={activeSection === 'billing'} onClick={() => selectSection('billing', true)} icon={<CreditCard size={16} />} label="Suscripción" />
+              <NavButton active={activeSection === 'integrations'} onClick={() => selectSection('integrations', true)} icon={<Share2 size={16} />} label="Integraciones" />
+              <NavButton active={activeSection === 'data'} onClick={() => selectSection('data', true)} icon={<Database size={16} />} label="Bóveda de Datos" />
             </div>
             {/* Avanzado */}
             <div className="space-y-1">
               <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Avanzado</p>
-              <NavButton active={activeSection === 'audit'} onClick={() => setActiveSection('audit')} icon={<FileText size={16} />} label="Auditoría" />
-              <NavButton active={activeSection === 'api'} onClick={() => setActiveSection('api')} icon={<Code size={16} />} label="API & Webhooks" />
-              <NavButton active={activeSection === 'delete_account'} onClick={() => setActiveSection('delete_account')} icon={<Trash2 size={16} />} label="Eliminar Cuenta" />
+              <NavButton active={activeSection === 'audit'} onClick={() => selectSection('audit', true)} icon={<FileText size={16} />} label="Auditoría" />
+              <NavButton active={activeSection === 'api'} onClick={() => selectSection('api', true)} icon={<Code size={16} />} label="API & Webhooks" />
+              <NavButton active={activeSection === 'delete_account'} onClick={() => selectSection('delete_account', true)} icon={<Trash2 size={16} />} label="Eliminar Cuenta" />
             </div>
             {/* Ayuda */}
             <div className="space-y-1 pt-4 border-t border-zinc-200">
-              <NavButton active={activeSection === 'support'} onClick={() => setActiveSection('support')} icon={<HelpCircle size={16} />} label="Ayuda y Soporte" />
+              <NavButton active={activeSection === 'support'} onClick={() => selectSection('support', true)} icon={<HelpCircle size={16} />} label="Ayuda y Soporte" />
             </div>
           </nav>
         </div>

@@ -24,6 +24,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { success } from '../utils/haptics';
 import { currentMonthCommitment } from '../utils/projection';
+import { RecurringSheet } from './RecurringSheet';
 
 const ordinalDay = (day: number) => {
   const safe = Math.max(1, Math.min(31, Math.round(day)));
@@ -111,7 +112,10 @@ export const RecurringExpenses: React.FC = () => {
     const lastDay = lastDayOfMonth(year, month);
     if (rec.frequency === 'daily') return lastDay;
     if (rec.frequency === 'monthly') {
-      const day = rec.dayOfMonth ?? 1;
+      if (Array.isArray(rec.dayOfMonth)) {
+        return rec.dayOfMonth.filter(d => d >= 1).length;
+      }
+      const day = (rec.dayOfMonth as number) ?? 1;
       return day >= 1 ? 1 : 0;
     }
     const targets = new Set(rec.daysOfWeek ?? []);
@@ -138,8 +142,11 @@ export const RecurringExpenses: React.FC = () => {
       return Array.from({ length: lastDay }, (_, i) => new Date(year, month, i + 1, hours, minutes));
     }
     if (rec.frequency === 'monthly') {
-      const day = Math.min(Math.max(1, rec.dayOfMonth ?? 1), lastDay);
-      return [new Date(year, month, day, hours, minutes)];
+      const days = Array.isArray(rec.dayOfMonth) ? rec.dayOfMonth : [(rec.dayOfMonth as number) ?? 1];
+      return days.map(day => {
+        const d = Math.min(Math.max(1, day), lastDay);
+        return new Date(year, month, d, hours, minutes);
+      }).sort((a, b) => a.getTime() - b.getTime());
     }
     const targets = new Set(rec.daysOfWeek ?? []);
     if (targets.size === 0) return [];
@@ -172,13 +179,18 @@ export const RecurringExpenses: React.FC = () => {
       }
       return null;
     }
-    const day = Math.max(1, rec.dayOfMonth ?? 1);
-    const thisMonthDay = Math.min(day, lastDayOfMonth(from.getFullYear(), from.getMonth()));
-    const thisMonthDate = new Date(from.getFullYear(), from.getMonth(), thisMonthDay, hours, minutes);
-    if (thisMonthDate.getTime() >= from.getTime()) return thisMonthDate;
+    const days = Array.isArray(rec.dayOfMonth) ? rec.dayOfMonth : [(rec.dayOfMonth as number) ?? 1];
+    const validDays = days.map(d => Math.max(1, d)).sort((a,b) => a - b);
+    
+    for (const day of validDays) {
+      const thisMonthDay = Math.min(day, lastDayOfMonth(from.getFullYear(), from.getMonth()));
+      const thisMonthDate = new Date(from.getFullYear(), from.getMonth(), thisMonthDay, hours, minutes);
+      if (thisMonthDate.getTime() >= from.getTime()) return thisMonthDate;
+    }
+    
     const nextMonth = new Date(from.getFullYear(), from.getMonth() + 1, 1);
-    const nextMonthDay = Math.min(day, lastDayOfMonth(nextMonth.getFullYear(), nextMonth.getMonth()));
-    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), nextMonthDay, hours, minutes);
+    const firstNextMonthDay = Math.min(validDays[0], lastDayOfMonth(nextMonth.getFullYear(), nextMonth.getMonth()));
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), firstNextMonthDay, hours, minutes);
   };
 
   const formatNextLabel = (date: Date) =>
@@ -262,7 +274,9 @@ export const RecurringExpenses: React.FC = () => {
         return order[a.frequency] - order[b.frequency];
       }
       if (a.frequency === 'monthly') {
-        return (a.dayOfMonth ?? 0) - (b.dayOfMonth ?? 0);
+        const aFirst = Array.isArray(a.dayOfMonth) ? a.dayOfMonth[0] : ((a.dayOfMonth as number) ?? 0);
+        const bFirst = Array.isArray(b.dayOfMonth) ? b.dayOfMonth[0] : ((b.dayOfMonth as number) ?? 0);
+        return aFirst - bFirst;
       }
       if (a.frequency === 'weekly') {
         const aFirst = (a.daysOfWeek ?? [])[0] ?? 0;
@@ -298,7 +312,7 @@ export const RecurringExpenses: React.FC = () => {
               ? 'Todos los días'
               : r.frequency === 'weekly'
               ? weeklyLabel || 'Semanal'
-              : `Día ${ordinalDay(r.dayOfMonth ?? 1)}`;
+              : `Día ${Array.isArray(r.dayOfMonth) ? r.dayOfMonth.map(d => ordinalDay(d)).join(' y ') : ordinalDay((r.dayOfMonth as number) ?? 1)}`;
           const paidLabel =
             r.type === 'income'
               ? r.frequency === 'monthly'
@@ -353,27 +367,27 @@ export const RecurringExpenses: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
                       {r.category}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-900 text-white font-medium">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-zinc-900 text-white font-medium">
                       {FREQ_LABEL[r.frequency]}
                     </span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
                       {scheduleLabel}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-700 font-medium num border border-zinc-200/70">
+                    <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md bg-white text-zinc-700 font-medium num border border-zinc-200/70">
                       <Clock size={10} />
                       {r.notifyTime ?? '09:00'}
                     </span>
                     {isRecurringPaidThisPeriod(r.id) && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">
+                      <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">
                         <Check size={10} strokeWidth={3} />
                         {paidLabel}
                       </span>
                     )}
                     {!r.enabled && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-medium">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-medium">
                         Pausado
                       </span>
                     )}
@@ -393,7 +407,7 @@ export const RecurringExpenses: React.FC = () => {
                   className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-zinc-600 transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   {r.type === 'income' ? 'Ingreso fijo' : 'Gasto fijo'}
-                  <span className="text-[9px] opacity-60">
+                  <span className="text-[10px] opacity-60">
                     ({getRecurringHistory(r.id).length > 0 ? `${getRecurringHistory(r.id).length} pagos` : 'sin pagos'})
                   </span>
                 </button>
@@ -449,13 +463,13 @@ export const RecurringExpenses: React.FC = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-3 border-t border-zinc-200/60 pt-3 space-y-1.5"
                 >
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Historial de pagos</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Historial de pagos</p>
                   {getRecurringHistory(r.id).length === 0 ? (
                     <p className="text-[10px] text-zinc-500 italic">No hay transacciones registradas.</p>
                   ) : (
                     <div className="max-h-24 overflow-y-auto space-y-1 pr-1">
                       {getRecurringHistory(r.id).map((tx) => (
-                        <div key={tx.id} className="flex justify-between items-center text-[10px] py-0.5 border-b border-zinc-100 last:border-0">
+                        <div key={tx.id} className="flex justify-between items-center text-sm py-0.5 border-b border-zinc-100 last:border-0">
                           <span className="text-zinc-600 num">
                             {new Date(tx.date).toLocaleDateString('es', {
                               day: 'numeric',
@@ -491,7 +505,7 @@ export const RecurringExpenses: React.FC = () => {
             ? 'Diario'
             : r.frequency === 'weekly'
             ? weeklyLabel || 'Semanal'
-            : `Día ${ordinalDay(r.dayOfMonth ?? 1)}`;
+            : `Día ${Array.isArray(r.dayOfMonth) ? r.dayOfMonth.map(d => ordinalDay(d)).join(' y ') : ordinalDay((r.dayOfMonth as number) ?? 1)}`;
         const paidLabel =
           r.type === 'income'
             ? r.frequency === 'monthly'
@@ -611,13 +625,13 @@ export const RecurringExpenses: React.FC = () => {
             </div>
             {isExpanded && (
               <div className="bg-zinc-50/50 border-t border-zinc-100 px-4 py-2.5 space-y-1.5">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400">Historial de pagos</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-zinc-400">Historial de pagos</p>
                 {history.length === 0 ? (
                   <p className="text-[10px] text-zinc-500 italic">No hay transacciones registradas.</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-24 overflow-y-auto pr-1">
                     {history.map((tx) => (
-                      <div key={tx.id} className="flex justify-between items-center text-[10px] py-1 border-b border-zinc-100/80 last:border-0">
+                      <div key={tx.id} className="flex justify-between items-center text-sm py-1 border-b border-zinc-100/80 last:border-0">
                         <span className="text-zinc-600 num">
                           {new Date(tx.date).toLocaleDateString('es', {
                             day: 'numeric',
@@ -677,47 +691,63 @@ export const RecurringExpenses: React.FC = () => {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
+          className="grid grid-cols-2 xl:grid-cols-4 items-stretch gap-3"
         >
-          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          <div className="min-w-0 h-full min-h-[96px] bg-white rounded-2xl border border-zinc-200/70 p-3.5 shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] leading-snug text-zinc-400">
               Gasto fijo mensual
             </p>
-            <p className="text-xl font-semibold num text-zinc-900 mt-1">
-              {formatCurrency(commitment.expense, settings.currency)}
-            </p>
+            <div className="mt-2">
+              <p className="text-[clamp(0.78rem,2.35vw,0.95rem)] sm:text-[clamp(0.78rem,1.22vw,0.95rem)] font-semibold num leading-tight text-zinc-900 break-normal">
+                {formatCurrency(commitment.expense, settings.currency)}
+              </p>
+              <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-zinc-300">Salida fija</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          <div className="min-w-0 h-full min-h-[96px] bg-white rounded-2xl border border-zinc-200/70 p-3.5 shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] leading-snug text-zinc-400">
               Ingreso fijo mensual
             </p>
-            <p className="text-xl font-semibold num text-emerald-600 mt-1">
-              +{formatCurrency(commitment.income, settings.currency)}
-            </p>
+            <div className="mt-2">
+              <p className="text-[clamp(0.78rem,2.35vw,0.95rem)] sm:text-[clamp(0.78rem,1.22vw,0.95rem)] font-semibold num leading-tight text-emerald-600 break-normal">
+                +{formatCurrency(commitment.income, settings.currency)}
+              </p>
+              <p className="mt-1 text-[8px] font-semibold uppercase tracking-[0.14em] text-emerald-600/35">Entrada fija</p>
+            </div>
           </div>
-          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          <div className="min-w-0 h-full min-h-[96px] bg-white rounded-2xl border border-zinc-200/70 p-3.5 shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] leading-snug text-zinc-400">
               Neto mensual
             </p>
             <p
               className={cn(
-                'text-xl font-semibold num mt-1',
+                'mt-2 text-[clamp(0.78rem,2.35vw,0.95rem)] sm:text-[clamp(0.78rem,1.22vw,0.95rem)] font-semibold num leading-tight break-normal',
                 commitment.net >= 0 ? 'text-emerald-600' : 'text-red-600'
               )}
             >
               {commitment.net >= 0 ? '+' : '−'}
               {formatCurrency(Math.abs(commitment.net), settings.currency)}
             </p>
+            <p
+              className={cn(
+                'mt-1 text-[8px] font-semibold uppercase tracking-[0.14em]',
+                commitment.net >= 0 ? 'text-emerald-600/35' : 'text-red-600/35'
+              )}
+            >
+              Balance fijo
+            </p>
           </div>
-          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+          <div className="min-w-0 h-full min-h-[96px] bg-white rounded-2xl border border-zinc-200/70 p-3.5 shadow-sm flex flex-col justify-between">
+            <p className="text-[9px] font-bold uppercase tracking-[0.16em] leading-snug text-zinc-400">
               Recurrencias
             </p>
-            <p className="text-xl font-semibold num text-zinc-900 mt-1">{recurring.length}</p>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mt-1">
+            <p className="mt-2 text-[clamp(0.95rem,2.6vw,1.1rem)] sm:text-[clamp(0.95rem,1.5vw,1.1rem)] font-semibold num leading-tight text-zinc-900">
+              {recurring.length}
+            </p>
+            <p className="mt-2 text-[9px] font-medium uppercase tracking-[0.14em] leading-snug text-zinc-400">
               Ingresos {incomeRecurring.length} · Gastos {expenseRecurring.length}
             </p>
-            <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mt-1">
+            <p className="mt-0.5 text-[9px] font-medium uppercase tracking-[0.14em] leading-snug text-zinc-400">
               Activas {activeCount} · Pausadas {pausedCount}
             </p>
           </div>
@@ -763,7 +793,7 @@ export const RecurringExpenses: React.FC = () => {
             )}
             <button
               onClick={() => setCompactView((prev) => !prev)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 text-[10px] font-semibold uppercase tracking-widest hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 text-sm font-semibold uppercase tracking-widest hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 shrink-0"
               aria-label={compactView ? 'Ver tarjetas' : 'Ver compacta'}
               title={compactView ? 'Cambiar a tarjetas' : 'Cambiar a compacta'}
             >
@@ -865,7 +895,7 @@ export const RecurringExpenses: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-zinc-400 justify-end sm:justify-start w-full sm:w-auto">
+              <div className="flex items-center gap-3 text-sm text-zinc-400 justify-end sm:justify-start w-full sm:w-auto">
                 <span className="inline-flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   Ingresos
@@ -876,7 +906,7 @@ export const RecurringExpenses: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-7 gap-1 text-[10px] text-zinc-400 mb-1">
+            <div className="grid grid-cols-7 gap-1 text-sm text-zinc-400 mb-1">
               {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((label) => (
                 <div key={label} className="text-center font-semibold">
                   {label}
@@ -901,7 +931,7 @@ export const RecurringExpenses: React.FC = () => {
                     }}
                     type="button"
                     className={cn(
-                      'rounded-lg border border-transparent p-2 sm:p-2.5 text-center text-[10px] sm:text-xs font-semibold text-zinc-700 transition-all hover:bg-zinc-100 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                      'rounded-lg border border-transparent p-2 sm:p-2.5 text-center text-sm sm:text-xs font-semibold text-zinc-700 transition-all hover:bg-zinc-100 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
                       isToday && 'border-zinc-900/30 bg-zinc-50',
                       isSelected && 'bg-zinc-900 text-white hover:bg-zinc-800'
                     )}
@@ -963,7 +993,7 @@ export const RecurringExpenses: React.FC = () => {
                             </div>
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-zinc-900 truncate">{r.name}</p>
-                              <p className="text-[10px] text-zinc-400 capitalize">
+                              <p className="text-sm text-zinc-400 capitalize">
                                 {r.category} · {FREQ_LABEL[r.frequency]}
                               </p>
                             </div>
@@ -984,13 +1014,13 @@ export const RecurringExpenses: React.FC = () => {
                                   await confirmRecurringPayment(r.id);
                                   success();
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 text-[10px] font-bold cursor-pointer transition-colors flex items-center gap-1"
+                                className="px-2.5 py-1.5 rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 text-sm font-bold cursor-pointer transition-colors flex items-center gap-1"
                               >
                                 <Check size={11} strokeWidth={3} />
                                 {r.type === 'income' ? 'Recibir' : 'Pagar'}
                               </button>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                              <span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
                                 <Check size={10} strokeWidth={3} />
                                 {paidLabel}
                               </span>
@@ -1022,403 +1052,3 @@ export const RecurringExpenses: React.FC = () => {
   );
 };
 
-interface RecurringSheetProps {
-  initial: RecurringExpense | null;
-  onClose: () => void;
-}
-
-const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => {
-  const { upsertRecurring, settings } = useFinance();
-  const [type, setType] = useState<TransactionType>(initial?.type ?? 'expense');
-  
-  const incomeCats = settings.incomeCategories || settings.categories || [];
-  const expenseCats = settings.expenseCategories || settings.categories || [];
-  const activeCategories = type === 'income' ? incomeCats : expenseCats;
-
-  const [name, setName] = useState(initial?.name ?? '');
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
-  const [category, setCategory] = useState(initial?.category ?? activeCategories[0] ?? '');
-  const [frequency, setFrequency] = useState<RecurringFrequency>(initial?.frequency ?? 'monthly');
-  const [dayOfMonth, setDayOfMonth] = useState(initial?.dayOfMonth ?? new Date().getDate());
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(
-    initial?.daysOfWeek && initial.daysOfWeek.length > 0 ? initial.daysOfWeek : [1]
-  );
-  const [notifyTime, setNotifyTime] = useState(initial?.notifyTime ?? '09:00');
-  const [enabled, setEnabled] = useState(initial?.enabled ?? true);
-  const [saving, setSaving] = useState(false);
-
-  const symbol = getCurrencySymbol(settings.currency);
-  const sheetTitle = initial
-    ? type === 'income'
-      ? 'Editar ingreso fijo'
-      : 'Editar gasto fijo'
-    : type === 'income'
-    ? 'Nuevo ingreso fijo'
-    : 'Nuevo gasto fijo';
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !amount || isNaN(Number(amount))) return;
-    if (frequency === 'weekly' && daysOfWeek.length === 0) return;
-    setSaving(true);
-    try {
-      await upsertRecurring({
-        id: initial?.id,
-        name: name.trim(),
-        amount: Number(amount),
-        category,
-        type,
-        frequency,
-        dayOfMonth: frequency === 'monthly' ? dayOfMonth : undefined,
-        daysOfWeek: frequency === 'weekly' ? daysOfWeek : undefined,
-        notifyTime,
-        enabled,
-      });
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleDayOfWeek = (d: number) => {
-    setDaysOfWeek((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort((a, b) => a - b)
-    );
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-zinc-900/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
-        transition={{ type: 'spring', stiffness: 380, damping: 36 }}
-        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl pb-[env(safe-area-inset-bottom)] max-h-[92dvh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-zinc-100 px-5 py-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-zinc-900">{sheetTitle}</h3>
-            <p className="text-[11px] text-zinc-500">Recordatorio automático.</p>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Cerrar"
-            className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 cursor-pointer"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div role="tablist" className="relative flex p-1 bg-zinc-100 rounded-xl">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={type === 'expense'}
-              onClick={() => { setType('expense'); setCategory(expenseCats[0] || ''); }}
-              className={cn(
-                'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
-                type === 'expense' ? 'text-red-600' : 'text-zinc-500 hover:text-zinc-800'
-              )}
-            >
-              <Minus size={15} />
-              Gasto
-              {type === 'expense' && (
-                <motion.span
-                  layoutId="rec-type-pill"
-                  aria-hidden
-                  className="absolute inset-0 rounded-lg bg-white shadow-sm -z-10"
-                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                />
-              )}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={type === 'income'}
-              onClick={() => { setType('income'); setCategory(incomeCats[0] || ''); }}
-              className={cn(
-                'relative flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
-                type === 'income' ? 'text-emerald-600' : 'text-zinc-500 hover:text-zinc-800'
-              )}
-            >
-              <Plus size={15} />
-              Ingreso
-              {type === 'income' && (
-                <motion.span
-                  layoutId="rec-type-pill"
-                  aria-hidden
-                  className="absolute inset-0 rounded-lg bg-white shadow-sm -z-10"
-                  transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                />
-              )}
-            </button>
-          </div>
-
-          <div>
-            <label htmlFor="rec-name" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
-              Nombre
-            </label>
-            <input
-              id="rec-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Renta, Netflix, Salario…"
-              maxLength={60}
-              required
-              className="mt-1 w-full px-3.5 py-3 bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 transition-all text-sm"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="rec-amount" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
-              Monto
-            </label>
-            <div className="mt-1 flex items-center bg-zinc-50 border border-zinc-200 rounded-2xl focus-within:border-zinc-900 focus-within:bg-white focus-within:ring-4 focus-within:ring-zinc-900/5 transition-all overflow-hidden">
-              <span
-                className={cn(
-                  'pl-4 pr-2 text-2xl font-light select-none num transition-colors',
-                  amount ? 'text-zinc-900' : 'text-zinc-300'
-                )}
-              >
-                {symbol}
-              </span>
-              <input
-                id="rec-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                required
-                className="flex-1 min-w-0 pr-4 py-3 bg-transparent focus:outline-none text-2xl font-light num tracking-tight"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 block mb-2">
-              Categoría
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {activeCategories.map((cat) => {
-                const active = category === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-medium border transition-all cursor-pointer',
-                      active
-                        ? 'bg-zinc-900 text-white border-zinc-900 shadow-sm'
-                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-900'
-                    )}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 block mb-2">
-              Frecuencia
-            </label>
-            <div role="tablist" className="relative grid grid-cols-3 gap-1 p-1 bg-zinc-100 rounded-xl">
-              {(
-                [
-                  { id: 'daily', label: 'Diario', icon: Repeat },
-                  { id: 'weekly', label: 'Semanal', icon: CalendarRange },
-                  { id: 'monthly', label: 'Mensual', icon: CalendarDays },
-                ] as const
-              ).map(({ id, label, icon: Icon }) => {
-                const active = frequency === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => setFrequency(id)}
-                    className={cn(
-                      'relative flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium z-10 transition-colors cursor-pointer',
-                      active ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-800'
-                    )}
-                  >
-                    <Icon size={14} />
-                    {label}
-                    {active && (
-                      <motion.span
-                        layoutId="rec-freq-pill"
-                        aria-hidden
-                        className="absolute inset-0 rounded-lg bg-white shadow-sm -z-10"
-                        transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {frequency === 'monthly' && (
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 block mb-2">
-                Día del mes
-              </label>
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5 bg-zinc-50 p-2.5 rounded-2xl border border-zinc-200">
-                {Array.from({ length: 31 }, (_, i) => {
-                  const day = i + 1;
-                  const active = dayOfMonth === day;
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setDayOfMonth(day)}
-                      className={cn(
-                        'py-2 px-0.5 rounded-lg text-xs font-semibold num transition-colors cursor-pointer focus:outline-none flex items-center justify-center',
-                        active
-                          ? 'bg-zinc-900 text-white shadow-sm'
-                          : 'bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 border border-zinc-200/50'
-                      )}
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-zinc-500 mt-1.5 ml-1">
-                Si el mes no llega a ese día se dispara el último día del mes.
-              </p>
-            </div>
-          )}
-
-          {frequency === 'weekly' && (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 block">
-                  Días de la semana
-                </label>
-                <span className="text-[10px] text-zinc-400 num">
-                  {daysOfWeek.length}/7
-                </span>
-              </div>
-              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
-                {WEEKDAY_PICKER_ORDER.map((d) => {
-                  const active = daysOfWeek.includes(d);
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => toggleDayOfWeek(d)}
-                      className={cn(
-                        'py-2.5 sm:py-2.5 px-0.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-tight transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 truncate flex items-center justify-center',
-                        active
-                          ? 'bg-zinc-900 text-white shadow-sm'
-                          : 'bg-zinc-50 text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-                      )}
-                    >
-                      {WEEKDAY_SHORT[d]}
-                    </button>
-                  );
-                })}
-              </div>
-              {daysOfWeek.length === 0 && (
-                <p className="text-[11px] text-red-500 mt-1.5 ml-1">Selecciona al menos un día.</p>
-              )}
-            </div>
-          )}
-
-          <div>
-            <label htmlFor="rec-time" className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1">
-              Hora de la notificación
-            </label>
-            <div className="mt-1 flex items-center gap-3 bg-zinc-50 border border-zinc-200 rounded-xl px-3.5 py-2.5 focus-within:border-zinc-900 focus-within:bg-white focus-within:ring-4 focus-within:ring-zinc-900/5 transition-all">
-              <Clock size={16} className="text-zinc-400 shrink-0" />
-              <input
-                id="rec-time"
-                type="time"
-                value={notifyTime}
-                onChange={(e) => setNotifyTime(e.target.value || '09:00')}
-                required
-                className="flex-1 min-w-0 bg-transparent focus:outline-none text-sm font-semibold num"
-              />
-            </div>
-            <p className="text-[11px] text-zinc-500 mt-1.5 ml-1">
-              Hora local de Santo Domingo. Llega al minuto exacto.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <ToggleRow
-              label="Activo"
-              description="Recibir recordatorio para confirmar el pago."
-              checked={enabled}
-              onChange={setEnabled}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-3.5 rounded-2xl bg-zinc-900 text-white font-semibold shadow-lg shadow-black/10 hover:bg-zinc-800 active:bg-zinc-700 disabled:opacity-60 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Check size={16} />
-            {saving ? 'Guardando…' : initial ? 'Guardar cambios' : 'Crear gasto fijo'}
-          </button>
-        </form>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-const ToggleRow: React.FC<{
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}> = ({ label, description, checked, onChange }) => (
-  <button
-    type="button"
-    onClick={() => onChange(!checked)}
-    className="w-full flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-zinc-50 hover:bg-zinc-100 transition-colors text-left cursor-pointer"
-  >
-    <div className="min-w-0">
-      <p className="text-sm font-semibold text-zinc-900">{label}</p>
-      {description && <p className="text-[11px] text-zinc-500">{description}</p>}
-    </div>
-    <span
-      className={cn(
-        'relative w-10 h-6 rounded-full transition-colors shrink-0',
-        checked ? 'bg-zinc-900' : 'bg-zinc-300'
-      )}
-    >
-      <motion.span
-        animate={{ x: checked ? 16 : 0 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow"
-      />
-    </span>
-  </button>
-);

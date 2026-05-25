@@ -59,12 +59,13 @@ service cloud.firestore {
 
     function isValidTransaction(data) {
       return hasRequiredFields(['id', 'amount', 'type', 'category', 'date', 'uid']) &&
-             hasOnlyAllowedFields(['id', 'amount', 'type', 'category', 'description', 'date', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'amount', 'type', 'category', 'description', 'date', 'uid', 'goalId']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.amount is number && data.amount >= 0 &&
              data.type in ['income', 'expense'] &&
              data.category is string && data.category.size() > 0 && data.category.size() < 50 &&
              (!('description' in data) || (data.description is string && data.description.size() < 200)) &&
+             (!('goalId' in data) || (data.goalId is string && data.goalId.size() > 0 && data.goalId.size() < 100)) &&
              isValidDateString(data.date) &&
              data.uid == request.auth.uid;
     }
@@ -97,8 +98,12 @@ service cloud.firestore {
              data.frequency in ['daily', 'weekly', 'monthly'] &&
              data.notifyTime is string && data.notifyTime.matches('^[0-2][0-9]:[0-5][0-9]$') &&
              (
-               (data.frequency == 'monthly' && data.dayOfMonth is number &&
-                data.dayOfMonth >= 1 && data.dayOfMonth <= 31 && !('daysOfWeek' in data)) ||
+               (data.frequency == 'monthly' &&
+                (
+                  (data.dayOfMonth is number && data.dayOfMonth >= 1 && data.dayOfMonth <= 31) ||
+                  (data.dayOfMonth is list && data.dayOfMonth.size() >= 1 && data.dayOfMonth.size() <= 2)
+                ) &&
+                !('daysOfWeek' in data)) ||
                (data.frequency == 'weekly' && data.daysOfWeek is list &&
                 data.daysOfWeek.size() >= 1 && data.daysOfWeek.size() <= 7 &&
                 !('dayOfMonth' in data)) ||
@@ -148,13 +153,14 @@ service cloud.firestore {
 
     function isValidSavingsGoal(data) {
       return hasRequiredFields(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
-             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'currency', 'deadline']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.uid == request.auth.uid &&
              data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
              data.targetAmount is number && data.targetAmount > 0 &&
              data.currentAmount is number && data.currentAmount >= 0 &&
              isValidDateString(data.createdAt) &&
+             (!('currency' in data) || (data.currency is string && data.currency.size() > 0 && data.currency.size() < 10)) &&
              (!('deadline' in data) || isValidDateString(data.deadline));
     }
 
