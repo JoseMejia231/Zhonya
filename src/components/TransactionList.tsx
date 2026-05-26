@@ -126,7 +126,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
         </div>
 
         {/* Unified Filter Tabs */}
-        <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
           <div role="tablist" aria-label="Filtro de periodo" className="relative flex p-1 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 rounded-xl overflow-x-auto no-scrollbar max-w-full">
             {filterOptions.map((opt) => {
               const active = filter === opt.value;
@@ -298,7 +298,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                             </div>
 
                             {/* Center Info Section */}
-                            <div className="flex-1 min-w-0 pr-24 sm:pr-0">
+                            <div className="flex-1 min-w-0 pr-24">
                               <div className="flex items-center justify-between gap-3">
                                 <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
                                   {t.description || t.category}
@@ -327,7 +327,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                             </div>
 
                             {/* Floating Action Menu disclosed on card hover */}
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/95 dark:bg-[#151C15]/95 pl-4 rounded-l-xl z-20 shadow-[-8px_0_12px_-4px_rgba(255,255,255,1)] dark:shadow-[-8px_0_12px_-4px_rgba(21,28,21,1)]">
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 bg-white/95 dark:bg-[#151C15]/95 pl-4 rounded-l-xl z-20 shadow-[-8px_0_12px_-4px_rgba(255,255,255,1)] dark:shadow-[-8px_0_12px_-4px_rgba(21,28,21,1)]">
                               <button
                                 onClick={() => handleDuplicate(t)}
                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
