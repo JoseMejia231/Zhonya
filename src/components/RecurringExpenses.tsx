@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { RecurringExpense, RecurringFrequency, TransactionType } from '../types';
 import { formatCurrency, cn, getCurrencySymbol } from '../utils';
@@ -8,6 +8,9 @@ import {
   CalendarDays,
   CalendarRange,
   Clock,
+  AlertTriangle,
+  LayoutGrid,
+  List,
   Pencil,
   Plus,
   Repeat,
@@ -24,6 +27,21 @@ const ordinalDay = (day: number) => {
   const safe = Math.max(1, Math.min(31, Math.round(day)));
   return `${safe}`;
 };
+
+const lastDayOfMonth = (year: number, month: number) =>
+  new Date(year, month + 1, 0).getDate();
+
+const normalizeNotifyTime = (value?: string) => {
+  const match = /^([0-2]\d):([0-5]\d)$/.exec(value ?? '');
+  if (!match) return { hours: 9, minutes: 0 };
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23) return { hours: 9, minutes: 0 };
+  return { hours, minutes };
+};
+
+const withTime = (date: Date, hours: number, minutes: number) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate(), hours, minutes, 0, 0);
 
 const WEEKDAY_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 // Lun → Dom para el picker (más natural en es-DO).
@@ -49,12 +67,20 @@ export const RecurringExpenses: React.FC = () => {
   const [editing, setEditing] = useState<RecurringExpense | null>(null);
   const [creating, setCreating] = useState(false);
   const [askingPermission, setAskingPermission] = useState(false);
+  const [compactView, setCompactView] = useState(false);
 
   const showPermissionPrompt =
     notificationStatus !== 'granted' && notificationStatus !== 'unsupported';
 
   const commitment = currentMonthCommitment(recurring);
-  const hasActive = recurring.some((r) => r.enabled);
+  const hasRecurring = recurring.length > 0;
+  const incomeRecurring = recurring.filter((r) => r.type === 'income');
+  const expenseRecurring = recurring.filter((r) => r.type === 'expense');
+  const activeCount = recurring.filter((r) => r.enabled).length;
+  const pausedCount = recurring.length - activeCount;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
 
   const handleEnableNotifications = async () => {
     setAskingPermission(true);
@@ -65,248 +91,700 @@ export const RecurringExpenses: React.FC = () => {
     }
   };
 
+  const occurrencesInMonth = (rec: RecurringExpense, year: number, month: number) => {
+    const lastDay = lastDayOfMonth(year, month);
+    if (rec.frequency === 'daily') return lastDay;
+    if (rec.frequency === 'monthly') {
+      const day = rec.dayOfMonth ?? 1;
+      return day >= 1 ? 1 : 0;
+    }
+    const targets = new Set(rec.daysOfWeek ?? []);
+    if (targets.size === 0) return 0;
+    let count = 0;
+    for (let d = 1; d <= lastDay; d += 1) {
+      if (targets.has(new Date(year, month, d).getDay())) count += 1;
+    }
+    return count;
+  };
+
+  const monthlyTotalFor = (items: RecurringExpense[]) =>
+    items
+      .filter((r) => r.enabled)
+      .reduce(
+        (sum, rec) => sum + rec.amount * occurrencesInMonth(rec, currentYear, currentMonth),
+        0
+      );
+
+  const getOccurrencesInMonthDates = (rec: RecurringExpense, year: number, month: number) => {
+    const { hours, minutes } = normalizeNotifyTime(rec.notifyTime);
+    const lastDay = lastDayOfMonth(year, month);
+    if (rec.frequency === 'daily') {
+      return Array.from({ length: lastDay }, (_, i) => new Date(year, month, i + 1, hours, minutes));
+    }
+    if (rec.frequency === 'monthly') {
+      const day = Math.min(Math.max(1, rec.dayOfMonth ?? 1), lastDay);
+      return [new Date(year, month, day, hours, minutes)];
+    }
+    const targets = new Set(rec.daysOfWeek ?? []);
+    if (targets.size === 0) return [];
+    const out: Date[] = [];
+    for (let d = 1; d <= lastDay; d += 1) {
+      if (targets.has(new Date(year, month, d).getDay())) {
+        out.push(new Date(year, month, d, hours, minutes));
+      }
+    }
+    return out;
+  };
+
+  const getNextOccurrence = (rec: RecurringExpense, from: Date) => {
+    if (!rec.enabled) return null;
+    const { hours, minutes } = normalizeNotifyTime(rec.notifyTime);
+    if (rec.frequency === 'daily') {
+      const today = withTime(from, hours, minutes);
+      if (today.getTime() >= from.getTime()) return today;
+      const tomorrow = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 1);
+      return withTime(tomorrow, hours, minutes);
+    }
+    if (rec.frequency === 'weekly') {
+      const targets = rec.daysOfWeek ?? [];
+      if (targets.length === 0) return null;
+      for (let i = 0; i <= 7; i += 1) {
+        const candidate = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i);
+        if (!targets.includes(candidate.getDay())) continue;
+        const candidateTime = withTime(candidate, hours, minutes);
+        if (candidateTime.getTime() >= from.getTime()) return candidateTime;
+      }
+      return null;
+    }
+    const day = Math.max(1, rec.dayOfMonth ?? 1);
+    const thisMonthDay = Math.min(day, lastDayOfMonth(from.getFullYear(), from.getMonth()));
+    const thisMonthDate = new Date(from.getFullYear(), from.getMonth(), thisMonthDay, hours, minutes);
+    if (thisMonthDate.getTime() >= from.getTime()) return thisMonthDate;
+    const nextMonth = new Date(from.getFullYear(), from.getMonth() + 1, 1);
+    const nextMonthDay = Math.min(day, lastDayOfMonth(nextMonth.getFullYear(), nextMonth.getMonth()));
+    return new Date(nextMonth.getFullYear(), nextMonth.getMonth(), nextMonthDay, hours, minutes);
+  };
+
+  const formatNextLabel = (date: Date) =>
+    `${date.toLocaleDateString('es', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })} · ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const calendar = useMemo(() => {
+    const reference = new Date();
+    const year = reference.getFullYear();
+    const month = reference.getMonth();
+    const lastDay = lastDayOfMonth(year, month);
+    const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+    const byDay = new Map<number, { income: number; expense: number }>();
+
+    recurring
+      .filter((r) => r.enabled)
+      .forEach((rec) => {
+        getOccurrencesInMonthDates(rec, year, month).forEach((date) => {
+          const day = date.getDate();
+          const entry = byDay.get(day) ?? { income: 0, expense: 0 };
+          if (rec.type === 'income') entry.income += 1;
+          else entry.expense += 1;
+          byDay.set(day, entry);
+        });
+      });
+
+    const days = Array.from({ length: lastDay }, (_, i) => {
+      const day = i + 1;
+      const entry = byDay.get(day);
+      return {
+        day,
+        incomeCount: entry?.income ?? 0,
+        expenseCount: entry?.expense ?? 0,
+      };
+    });
+
+    return {
+      year,
+      month,
+      today: reference.getDate(),
+      monthLabel: reference.toLocaleDateString('es', { month: 'long', year: 'numeric' }),
+      firstWeekday,
+      days,
+    };
+  }, [recurring]);
+
+  const overspendThreshold = 0.8;
+  const overspendPct =
+    commitment && commitment.income > 0
+      ? Math.round((commitment.expense / commitment.income) * 100)
+      : 0;
+  const showOverspendAlert =
+    commitment &&
+    commitment.income > 0 &&
+    commitment.expense >= commitment.income * overspendThreshold;
+
+  const sortedRecurring = (items: RecurringExpense[]) =>
+    items.slice().sort((a, b) => {
+      // Diarios → Semanales → Mensuales, luego por hora asc.
+      const order: Record<string, number> = { daily: 0, weekly: 1, monthly: 2 };
+      if (a.frequency !== b.frequency) {
+        return order[a.frequency] - order[b.frequency];
+      }
+      if (a.frequency === 'monthly') {
+        return (a.dayOfMonth ?? 0) - (b.dayOfMonth ?? 0);
+      }
+      if (a.frequency === 'weekly') {
+        const aFirst = (a.daysOfWeek ?? [])[0] ?? 0;
+        const bFirst = (b.daysOfWeek ?? [])[0] ?? 0;
+        return aFirst - bFirst;
+      }
+      return (a.notifyTime ?? '').localeCompare(b.notifyTime ?? '');
+    });
+
+  const groupByCategory = (items: RecurringExpense[]) => {
+    const groups = new Map<string, RecurringExpense[]>();
+    for (const item of items) {
+      const key = item.category || 'Sin categoría';
+      const list = groups.get(key) ?? [];
+      list.push(item);
+      groups.set(key, list);
+    }
+    return Array.from(groups.entries())
+      .map(([category, list]) => ({ category, items: list }))
+      .sort((a, b) => b.items.length - a.items.length || a.category.localeCompare(b.category));
+  };
+
+  const renderRecurringCards = (items: RecurringExpense[]) => (
+    <motion.div layout className="grid gap-3 sm:grid-cols-2">
+      <AnimatePresence initial={false}>
+        {sortedRecurring(items).map((r) => {
+          const weeklyLabel =
+            (r.daysOfWeek ?? []).length > 3
+              ? `${(r.daysOfWeek ?? []).length} días`
+              : (r.daysOfWeek ?? []).map((d) => WEEKDAY_SHORT[d]).join(', ');
+          const scheduleLabel =
+            r.frequency === 'daily'
+              ? 'Todos los días'
+              : r.frequency === 'weekly'
+              ? weeklyLabel || 'Semanal'
+              : `Día ${ordinalDay(r.dayOfMonth ?? 1)}`;
+          const paidLabel =
+            r.type === 'income'
+              ? r.frequency === 'monthly'
+                ? 'Cobrado este mes'
+                : 'Cobrado hoy'
+              : r.frequency === 'monthly'
+              ? 'Pagado este mes'
+              : 'Pagado hoy';
+          const nextOccurrence = getNextOccurrence(r, now);
+          const nextLabel = nextOccurrence ? formatNextLabel(nextOccurrence) : null;
+          const nextPrefix = r.type === 'income' ? 'Próximo cobro' : 'Próximo pago';
+          const confirmLabel = r.type === 'income' ? 'Marcar recibido' : 'Marcar pagado';
+          const confirmTitle =
+            r.type === 'income'
+              ? 'Marcar como recibido este periodo'
+              : 'Marcar como pagado este periodo';
+          return (
+            <motion.div
+              key={r.id}
+              layout
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.2 }}
+              className={cn(
+                'rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 shadow-sm',
+                !r.enabled && 'opacity-80'
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    'w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 transition-colors',
+                    r.enabled ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
+                  )}
+                >
+                  {r.frequency === 'daily' && <Repeat size={18} strokeWidth={2.4} />}
+                  {r.frequency === 'weekly' && <CalendarRange size={18} strokeWidth={2.4} />}
+                  {r.frequency === 'monthly' && <CalendarDays size={18} strokeWidth={2.4} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="text-sm font-semibold text-zinc-900 truncate">{r.name}</h4>
+                    <span
+                      className={cn(
+                        'text-sm font-semibold whitespace-nowrap num',
+                        r.type === 'income' ? 'text-emerald-600' : 'text-zinc-900'
+                      )}
+                    >
+                      {r.type === 'income' ? '+' : '−'}
+                      {formatCurrency(r.amount, settings.currency)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
+                      {r.category}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-900 text-white font-medium">
+                      {FREQ_LABEL[r.frequency]}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-600 font-medium border border-zinc-200/70">
+                      {scheduleLabel}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-white text-zinc-700 font-medium num border border-zinc-200/70">
+                      <Clock size={10} />
+                      {r.notifyTime ?? '09:00'}
+                    </span>
+                    {isRecurringPaidThisPeriod(r.id) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">
+                        <Check size={10} strokeWidth={3} />
+                        {paidLabel}
+                      </span>
+                    )}
+                    {!r.enabled && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-medium">
+                        Pausado
+                      </span>
+                    )}
+                  </div>
+                  {r.enabled && nextLabel && (
+                    <p className="text-[10px] text-zinc-500 mt-2">
+                      {nextPrefix}:{' '}
+                      <span className="font-semibold num text-zinc-700">{nextLabel}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  {r.type === 'income' ? 'Ingreso fijo' : 'Gasto fijo'}
+                </span>
+                <div className="flex items-center gap-1">
+                  {!isRecurringPaidThisPeriod(r.id) && (
+                    <button
+                      onClick={async () => {
+                        await confirmRecurringPayment(r.id);
+                        success();
+                      }}
+                      aria-label={confirmLabel}
+                      title={confirmTitle}
+                      className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+                    >
+                      <Check size={17} strokeWidth={2.5} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => toggleRecurring(r.id, !r.enabled)}
+                    aria-label={r.enabled ? 'Pausar' : 'Reanudar'}
+                    title={r.enabled ? 'Pausar recordatorio' : 'Reanudar recordatorio'}
+                    className={cn(
+                      'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                      r.enabled
+                        ? 'text-zinc-700 hover:bg-zinc-100'
+                        : 'text-zinc-400 hover:bg-zinc-100'
+                    )}
+                  >
+                    {r.enabled ? <Bell size={15} /> : <BellOff size={15} />}
+                  </button>
+                  <button
+                    onClick={() => setEditing(r)}
+                    aria-label="Editar"
+                    title="Editar"
+                    className="p-2 rounded-lg text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    onClick={() => deleteRecurring(r.id)}
+                    aria-label="Eliminar"
+                    title="Eliminar"
+                    className="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </motion.div>
+  );
+
+  const renderRecurringRows = (items: RecurringExpense[]) => (
+    <div className="rounded-2xl border border-zinc-200/70 bg-white overflow-hidden">
+      {sortedRecurring(items).map((r, idx) => {
+        const weeklyLabel =
+          (r.daysOfWeek ?? []).length > 3
+            ? `${(r.daysOfWeek ?? []).length} días`
+            : (r.daysOfWeek ?? []).map((d) => WEEKDAY_SHORT[d]).join(', ');
+        const scheduleLabel =
+          r.frequency === 'daily'
+            ? 'Diario'
+            : r.frequency === 'weekly'
+            ? weeklyLabel || 'Semanal'
+            : `Día ${ordinalDay(r.dayOfMonth ?? 1)}`;
+        const paidLabel =
+          r.type === 'income'
+            ? r.frequency === 'monthly'
+              ? 'Cobrado este mes'
+              : 'Cobrado hoy'
+            : r.frequency === 'monthly'
+            ? 'Pagado este mes'
+            : 'Pagado hoy';
+        const nextOccurrence = getNextOccurrence(r, now);
+        const nextLabel = nextOccurrence ? formatNextLabel(nextOccurrence) : null;
+        const nextPrefix = r.type === 'income' ? 'Próximo cobro' : 'Próximo pago';
+        return (
+          <div
+            key={r.id}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5',
+              idx > 0 && 'border-t border-zinc-100',
+              !r.enabled && 'opacity-80'
+            )}
+          >
+            <div
+              className={cn(
+                'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                r.enabled ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
+              )}
+            >
+              {r.frequency === 'daily' && <Repeat size={16} strokeWidth={2.4} />}
+              {r.frequency === 'weekly' && <CalendarRange size={16} strokeWidth={2.4} />}
+              {r.frequency === 'monthly' && <CalendarDays size={16} strokeWidth={2.4} />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-semibold text-zinc-900 truncate">{r.name}</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-50 text-zinc-600 font-medium border border-zinc-200/70">
+                  {r.category}
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-900 text-white font-medium">
+                  {FREQ_LABEL[r.frequency]}
+                </span>
+                <span className="text-[10px] text-zinc-500">{scheduleLabel}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-1 flex-wrap">
+                <span className="inline-flex items-center gap-1">
+                  <Clock size={10} />
+                  {r.notifyTime ?? '09:00'}
+                </span>
+                {isRecurringPaidThisPeriod(r.id) && (
+                  <span className="inline-flex items-center gap-1 text-emerald-600">
+                    <Check size={10} strokeWidth={3} />
+                    {paidLabel}
+                  </span>
+                )}
+                {!r.enabled && <span className="text-amber-600">Pausado</span>}
+                {r.enabled && nextLabel && (
+                  <span className="text-zinc-500">
+                    {nextPrefix}: <span className="font-semibold num">{nextLabel}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+            <div
+              className={cn(
+                'text-sm font-semibold whitespace-nowrap num',
+                r.type === 'income' ? 'text-emerald-600' : 'text-zinc-900'
+              )}
+            >
+              {r.type === 'income' ? '+' : '−'}
+              {formatCurrency(r.amount, settings.currency)}
+            </div>
+            <div className="flex items-center gap-1">
+              {!isRecurringPaidThisPeriod(r.id) && (
+                <button
+                  onClick={async () => {
+                    await confirmRecurringPayment(r.id);
+                    success();
+                  }}
+                  aria-label={r.type === 'income' ? 'Marcar recibido' : 'Marcar pagado'}
+                  title={r.type === 'income' ? 'Marcar como recibido este periodo' : 'Marcar como pagado este periodo'}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
+                >
+                  <Check size={15} strokeWidth={2.5} />
+                </button>
+              )}
+              <button
+                onClick={() => toggleRecurring(r.id, !r.enabled)}
+                aria-label={r.enabled ? 'Pausar' : 'Reanudar'}
+                title={r.enabled ? 'Pausar recordatorio' : 'Reanudar recordatorio'}
+                className={cn(
+                  'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                  r.enabled ? 'text-zinc-700 hover:bg-zinc-100' : 'text-zinc-400 hover:bg-zinc-100'
+                )}
+              >
+                {r.enabled ? <Bell size={14} /> : <BellOff size={14} />}
+              </button>
+              <button
+                onClick={() => setEditing(r)}
+                aria-label="Editar"
+                title="Editar"
+                className="p-2 rounded-lg text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => deleteRecurring(r.id)}
+                aria-label="Eliminar"
+                title="Eliminar"
+                className="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const renderRecurringGroups = (items: RecurringExpense[], type: 'income' | 'expense') => (
+    <div className="space-y-4">
+      {groupByCategory(items).map((group) => {
+        const total = monthlyTotalFor(group.items);
+        const netLabel =
+          type === 'income'
+            ? `+${formatCurrency(Math.abs(total), settings.currency)}`
+            : `−${formatCurrency(Math.abs(total), settings.currency)}`;
+        return (
+          <div key={group.category} className="space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  {group.category}
+                </p>
+                <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">
+                  {group.items.length} {group.items.length === 1 ? 'item' : 'items'}
+                </p>
+              </div>
+              <div className="text-[10px] font-medium uppercase tracking-widest text-zinc-400">
+                Total mes: {formatCurrency(total, settings.currency)} · Neto: {netLabel}
+              </div>
+            </div>
+            {compactView ? renderRecurringRows(group.items) : renderRecurringCards(group.items)}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      {showPermissionPrompt && (
-        <div className="bg-zinc-900 text-white p-5 rounded-3xl shadow-xl shadow-black/20 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shrink-0">
-            <Bell size={18} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold">Activa los recordatorios</h3>
-            <p className="text-xs text-white/60 mt-0.5 leading-relaxed">
-              Te avisaremos el día de cada gasto fijo, incluso con la app cerrada.
-            </p>
-            <button
-              onClick={handleEnableNotifications}
-              disabled={askingPermission}
-              className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-zinc-900 text-xs font-semibold hover:bg-zinc-100 transition-colors disabled:opacity-50 cursor-pointer"
-            >
-              <Bell size={13} />
-              {askingPermission ? 'Solicitando…' : 'Activar notificaciones'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {hasActive && commitment && (
+      {activeCount > 0 && commitment && (
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="bg-zinc-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-black/20 overflow-hidden relative"
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3"
         >
-          <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full bg-white/[0.04] blur-3xl pointer-events-none" />
-          <div className="relative z-10 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">
-                Compromiso este mes
-              </p>
-              <p className="text-3xl sm:text-4xl font-light tracking-tight num leading-tight mt-1 break-words">
-                {formatCurrency(commitment.expense, settings.currency)}
-              </p>
-              <p className="text-[10px] font-medium uppercase tracking-widest text-white/30 mt-1">
-                Ingresos fijos:{' '}
-                <span className="text-emerald-300 num">
-                  +{formatCurrency(commitment.income, settings.currency)}
-                </span>
-              </p>
-            </div>
-            <div
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Gasto fijo mensual
+            </p>
+            <p className="text-xl font-semibold num text-zinc-900 mt-1">
+              {formatCurrency(commitment.expense, settings.currency)}
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Ingreso fijo mensual
+            </p>
+            <p className="text-xl font-semibold num text-emerald-600 mt-1">
+              +{formatCurrency(commitment.income, settings.currency)}
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Neto mensual
+            </p>
+            <p
               className={cn(
-                'shrink-0 text-right rounded-2xl px-3 py-2 border',
-                commitment.net >= 0
-                  ? 'bg-emerald-500/15 border-emerald-400/20 text-emerald-300'
-                  : 'bg-red-500/15 border-red-400/20 text-red-300'
+                'text-xl font-semibold num mt-1',
+                commitment.net >= 0 ? 'text-emerald-600' : 'text-red-600'
               )}
             >
-              <p className="text-[9px] font-bold uppercase tracking-widest opacity-70">Neto</p>
-              <p className="text-sm font-semibold num">
-                {commitment.net >= 0 ? '+' : '−'}
-                {formatCurrency(Math.abs(commitment.net), settings.currency)}
-              </p>
-            </div>
+              {commitment.net >= 0 ? '+' : '−'}
+              {formatCurrency(Math.abs(commitment.net), settings.currency)}
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl border border-zinc-200/70 p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Recurrencias
+            </p>
+            <p className="text-xl font-semibold num text-zinc-900 mt-1">{recurring.length}</p>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mt-1">
+              Ingresos {incomeRecurring.length} · Gastos {expenseRecurring.length}
+            </p>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-400 mt-1">
+              Activas {activeCount} · Pausadas {pausedCount}
+            </p>
           </div>
         </motion.div>
+      )}
+
+      {showOverspendAlert && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+            <AlertTriangle size={16} className="text-amber-700" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-amber-900">Alerta de sobrecosto</h3>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              Los gastos fijos ya representan {overspendPct}% de los ingresos fijos (umbral{' '}
+              {Math.round(overspendThreshold * 100)}%).
+            </p>
+          </div>
+        </div>
       )}
 
       <div className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden">
         <div className="flex items-center justify-between p-5">
           <div>
             <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-              Gastos fijos
+              Recurrencias fijas
             </h2>
             <p className="text-sm font-semibold text-zinc-900 mt-0.5">
               {recurring.length} {recurring.length === 1 ? 'recurrencia' : 'recurrencias'}
             </p>
           </div>
-          <button
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
-          >
-            <Plus size={14} />
-            Añadir
-          </button>
+          <div className="flex items-center gap-2">
+            {showPermissionPrompt && (
+              <button
+                onClick={handleEnableNotifications}
+                disabled={askingPermission}
+                title="Activar notificaciones"
+                aria-label="Activar notificaciones"
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+              >
+                <Bell size={16} />
+              </button>
+            )}
+            <button
+              onClick={() => setCompactView((prev) => !prev)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-zinc-200 bg-zinc-50 text-zinc-700 text-[10px] font-semibold uppercase tracking-widest hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+              aria-label={compactView ? 'Ver tarjetas' : 'Ver compacta'}
+              title={compactView ? 'Cambiar a tarjetas' : 'Cambiar a compacta'}
+            >
+              {compactView ? <LayoutGrid size={14} /> : <List size={14} />}
+              {compactView ? 'Tarjetas' : 'Compacta'}
+            </button>
+            <button
+              onClick={() => setCreating(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+            >
+              <Plus size={14} />
+              Añadir
+            </button>
+          </div>
         </div>
 
-        {recurring.length === 0 ? (
-          <div className="px-5 pb-10 text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-50 mb-3">
-              <Repeat className="text-zinc-300" size={26} />
+        <div className="px-5 pb-6 space-y-6">
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Ingresos fijos
+              </p>
+              <p className="text-sm font-semibold text-zinc-900 mt-0.5">
+                {incomeRecurring.length} {incomeRecurring.length === 1 ? 'recurrencia' : 'recurrencias'}
+              </p>
             </div>
-            <h3 className="text-sm font-semibold text-zinc-900">Sin gastos fijos</h3>
-            <p className="text-xs text-zinc-500 mt-1 max-w-[260px] mx-auto leading-relaxed">
-              Configura suscripciones, alquileres o pagos mensuales para recibir recordatorios.
-            </p>
+            {incomeRecurring.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-200/70 bg-zinc-50/60 p-4 text-center">
+                <h3 className="text-sm font-semibold text-zinc-900">Sin ingresos fijos</h3>
+                <p className="text-xs text-zinc-500 mt-1 max-w-[320px] mx-auto leading-relaxed">
+                  Agrega sueldos, rentas o ingresos recurrentes para tenerlos controlados.
+                </p>
+              </div>
+            ) : (
+              renderRecurringGroups(incomeRecurring, 'income')
+            )}
           </div>
-        ) : (
-          <ul className="border-t border-zinc-100">
-            <AnimatePresence initial={false}>
-              {recurring
-                .slice()
-                .sort((a, b) => {
-                  // Diarios → Semanales → Mensuales, luego por hora asc.
-                  const order: Record<string, number> = { daily: 0, weekly: 1, monthly: 2 };
-                  if (a.frequency !== b.frequency) {
-                    return order[a.frequency] - order[b.frequency];
-                  }
-                  if (a.frequency === 'monthly') {
-                    return (a.dayOfMonth ?? 0) - (b.dayOfMonth ?? 0);
-                  }
-                  if (a.frequency === 'weekly') {
-                    const aFirst = (a.daysOfWeek ?? [])[0] ?? 0;
-                    const bFirst = (b.daysOfWeek ?? [])[0] ?? 0;
-                    return aFirst - bFirst;
-                  }
-                  return (a.notifyTime ?? '').localeCompare(b.notifyTime ?? '');
-                })
-                .map((r) => (
-                  <motion.li
-                    key={r.id}
-                    layout
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, x: -16 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-3 p-4 sm:p-5 border-b border-zinc-100 last:border-b-0 group"
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                Gastos fijos
+              </p>
+              <p className="text-sm font-semibold text-zinc-900 mt-0.5">
+                {expenseRecurring.length} {expenseRecurring.length === 1 ? 'recurrencia' : 'recurrencias'}
+              </p>
+            </div>
+            {expenseRecurring.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-zinc-200/70 bg-zinc-50/60 p-4 text-center">
+                <h3 className="text-sm font-semibold text-zinc-900">Sin gastos fijos</h3>
+                <p className="text-xs text-zinc-500 mt-1 max-w-[320px] mx-auto leading-relaxed">
+                  Configura suscripciones, alquileres o pagos mensuales para recibir recordatorios.
+                </p>
+              </div>
+            ) : (
+              renderRecurringGroups(expenseRecurring, 'expense')
+            )}
+          </div>
+        </div>
+
+        {hasRecurring && (
+          <div className="border-t border-zinc-100 px-5 pb-6 pt-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+                  Calendario del mes
+                </p>
+                <p className="text-sm font-semibold text-zinc-900">
+                  {calendar.monthLabel}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 text-[10px] text-zinc-400">
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Ingresos
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  Gastos
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-[10px] text-zinc-400 mb-1">
+              {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((label) => (
+                <div key={label} className="text-center font-semibold">
+                  {label}
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: calendar.firstWeekday }).map((_, idx) => (
+                <div key={`empty-${idx}`} />
+              ))}
+              {calendar.days.map((day) => {
+                const hasIncome = day.incomeCount > 0;
+                const hasExpense = day.expenseCount > 0;
+                const isToday = day.day === calendar.today;
+                const total = day.incomeCount + day.expenseCount;
+                return (
+                  <div
+                    key={day.day}
+                    className={cn(
+                      'rounded-lg border border-transparent p-1.5 text-center text-[10px] font-semibold text-zinc-700',
+                      isToday && 'border-zinc-900/30 bg-zinc-50'
+                    )}
+                    title={
+                      total > 0
+                        ? `${day.incomeCount} ingresos · ${day.expenseCount} gastos`
+                        : 'Sin movimientos'
+                    }
                   >
-                    <div
-                      className={cn(
-                        'w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 transition-colors',
-                        r.enabled ? 'bg-zinc-900 text-white' : 'bg-zinc-100 text-zinc-400'
-                      )}
-                    >
-                      {r.frequency === 'daily' && <Repeat size={18} strokeWidth={2.4} />}
-                      {r.frequency === 'weekly' && (
-                        <>
-                          <span className="text-[8px] font-bold uppercase tracking-wider opacity-60 leading-none">
-                            Sem
-                          </span>
-                          <span className="text-[10px] font-bold leading-none mt-0.5 num">
-                            {(r.daysOfWeek ?? []).length > 3
-                              ? `${(r.daysOfWeek ?? []).length}d`
-                              : (r.daysOfWeek ?? [])
-                                  .map((d) => WEEKDAY_SHORT[d][0])
-                                  .join('')}
-                          </span>
-                        </>
-                      )}
-                      {r.frequency === 'monthly' && (
-                        <>
-                          <span className="text-[8px] font-bold uppercase tracking-wider opacity-60 leading-none">
-                            Día
-                          </span>
-                          <span className="text-base font-bold num leading-none mt-0.5">
-                            {ordinalDay(r.dayOfMonth ?? 1)}
-                          </span>
-                        </>
-                      )}
+                    <div className="num">{day.day}</div>
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      {hasIncome && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                      {hasExpense && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-sm font-semibold text-zinc-900 truncate">{r.name}</h4>
-                        <span
-                          className={cn(
-                            'text-sm font-semibold whitespace-nowrap num',
-                            r.type === 'income' ? 'text-emerald-600' : 'text-zinc-900'
-                          )}
-                        >
-                          {r.type === 'income' ? '+' : '−'}
-                          {formatCurrency(r.amount, settings.currency)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-medium">
-                          {r.category}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-900 text-white font-medium">
-                          {FREQ_LABEL[r.frequency]}
-                        </span>
-                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 text-zinc-700 font-medium num">
-                          <Clock size={10} />
-                          {r.notifyTime ?? '09:00'}
-                        </span>
-                        {isRecurringPaidThisPeriod(r.id) && (
-                          <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-medium">
-                            <Check size={10} strokeWidth={3} />
-                            {r.frequency === 'monthly' ? 'Pagado este mes' : 'Pagado hoy'}
-                          </span>
-                        )}
-                        {!r.enabled && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 font-medium">
-                            Pausado
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {!isRecurringPaidThisPeriod(r.id) && (
-                        <button
-                          onClick={async () => {
-                            await confirmRecurringPayment(r.id);
-                            success();
-                          }}
-                          aria-label="Marcar pagado"
-                          title="Marcar como pagado este periodo"
-                          className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30"
-                        >
-                          <Check size={17} strokeWidth={2.5} />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => toggleRecurring(r.id, !r.enabled)}
-                        aria-label={r.enabled ? 'Pausar' : 'Reanudar'}
-                        title={r.enabled ? 'Pausar recordatorio' : 'Reanudar recordatorio'}
-                        className={cn(
-                          'p-2 rounded-lg transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
-                          r.enabled
-                            ? 'text-zinc-700 hover:bg-zinc-100'
-                            : 'text-zinc-400 hover:bg-zinc-100'
-                        )}
-                      >
-                        {r.enabled ? <Bell size={15} /> : <BellOff size={15} />}
-                      </button>
-                      <button
-                        onClick={() => setEditing(r)}
-                        aria-label="Editar"
-                        title="Editar"
-                        className="p-2 rounded-lg text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => deleteRecurring(r.id)}
-                        aria-label="Eliminar"
-                        title="Eliminar"
-                        className="p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </motion.li>
-                ))}
-            </AnimatePresence>
-          </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 
@@ -351,6 +829,13 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
   const [saving, setSaving] = useState(false);
 
   const symbol = getCurrencySymbol(settings.currency);
+  const sheetTitle = initial
+    ? type === 'income'
+      ? 'Editar ingreso fijo'
+      : 'Editar gasto fijo'
+    : type === 'income'
+    ? 'Nuevo ingreso fijo'
+    : 'Nuevo gasto fijo';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -409,10 +894,8 @@ const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => 
       >
         <div className="sticky top-0 bg-white/90 backdrop-blur-xl border-b border-zinc-100 px-5 py-4 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-zinc-900">
-              {initial ? 'Editar gasto fijo' : 'Nuevo gasto fijo'}
-            </h3>
-            <p className="text-[11px] text-zinc-500">Recordatorio mensual automático.</p>
+            <h3 className="text-base font-bold text-zinc-900">{sheetTitle}</h3>
+            <p className="text-[11px] text-zinc-500">Recordatorio automático.</p>
           </div>
           <button
             onClick={onClose}
