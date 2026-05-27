@@ -205,7 +205,7 @@ export const sendRecurringReminders = onSchedule(
  * Endpoint temporal de diagnóstico. Devuelve el estado de las recurrencias y
  * tokens push. Protegido con un token simple en query string.
  */
-export const debugZencash = onRequest(
+export const debugMona = onRequest(
   { region: 'us-central1', cors: true },
   async (req: any, res: any) => {
     if (req.query.token !== DEBUG_TOKEN) {
