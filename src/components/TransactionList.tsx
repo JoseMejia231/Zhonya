@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../utils';
 import { groupTotalsByCurrency } from '../utils/money';
-import { Trash2, ArrowUpRight, ArrowDownLeft, Inbox, Search, Pencil, Copy, Plus } from 'lucide-react';
+import { Trash2, ArrowUpRight, ArrowDownLeft, Inbox, Search, Pencil, Copy, Plus, Target } from 'lucide-react';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'motion/react';
@@ -21,7 +21,7 @@ interface TransactionListProps {
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) => {
-  const { filteredTransactions, deleteTransaction, settings, filter, setFilter } = useFinance();
+  const { filteredTransactions, deleteTransaction, settings, filter, setFilter, savingsGoals } = useFinance();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
@@ -185,38 +185,45 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
         />
       </div>
 
-      {/* Balanced Summary Widget Card — una fila por moneda */}
+      {/* Balanced Summary Widget Card — una fila por moneda, estilo gradient + dark del dueño */}
       {(effectivelyFiltered.length > 0 || filteredTransactions.length > 0) && totalsByCurrency.length > 0 && (
-        <div className="mb-6 space-y-1 p-1 bg-zinc-50 dark:bg-zinc-950/60 rounded-2xl border border-zinc-200 relative overflow-hidden">
+        <div className="mb-6 p-1.5 sm:p-2 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900 dark:to-emerald-800 rounded-2xl border border-emerald-300 dark:border-emerald-600 shadow-md space-y-1.5">
           {totalsByCurrency.map((t) => (
-            <div key={t.currency} className="grid grid-cols-3 gap-1">
+            <div key={t.currency}>
               {totalsByCurrency.length > 1 && (
-                <span className="col-span-3 px-2 pt-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                <span className="block px-2 pt-1 pb-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                   {t.currency}
                 </span>
               )}
-              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Ingresos</span>
-                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-[#52C447] num flex items-center gap-0.5">
-                  <ArrowDownLeft size={10} className="stroke-[3]" />
-                  {formatCurrency(t.income, t.currency)}
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Gastos</span>
-                <span className="text-[11px] font-extrabold text-rose-600 dark:text-red-400 num flex items-center gap-0.5">
-                  <ArrowUpRight size={10} className="stroke-[3]" />
-                  {formatCurrency(t.expense, t.currency)}
-                </span>
-              </div>
-              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Balance</span>
-                <span className={cn(
-                  "text-[11px] font-black num",
-                  t.net >= 0 ? "text-emerald-700 dark:text-[#52C447]" : "text-rose-700 dark:text-red-400"
-                )}>
-                  {t.net >= 0 ? '+' : ''}{formatCurrency(t.net, t.currency)}
-                </span>
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                {/* Income */}
+                <div className="flex flex-col items-center text-center p-2 sm:p-3 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200 dark:border-emerald-700 shadow-sm min-w-0">
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300 mb-1">Ingresos</span>
+                  <span className="text-xs sm:text-lg font-extrabold text-emerald-700 dark:text-emerald-200 num flex items-center gap-0.5 sm:gap-1">
+                    <ArrowDownLeft size={12} className="stroke-[2] shrink-0 hidden sm:block" />
+                    {formatCurrency(t.income, t.currency)}
+                  </span>
+                </div>
+
+                {/* Expense */}
+                <div className="flex flex-col items-center text-center p-2 sm:p-3 bg-white dark:bg-zinc-900 rounded-xl border border-rose-200 dark:border-rose-700 shadow-sm min-w-0">
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-rose-600 dark:text-rose-300 mb-1">Gastos</span>
+                  <span className="text-xs sm:text-lg font-extrabold text-rose-600 dark:text-rose-200 num flex items-center gap-0.5 sm:gap-1">
+                    <ArrowUpRight size={12} className="stroke-[2] shrink-0 hidden sm:block" />
+                    {formatCurrency(t.expense, t.currency)}
+                  </span>
+                </div>
+
+                {/* Net */}
+                <div className="flex flex-col items-center text-center p-2 sm:p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-600 shadow-sm min-w-0">
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-zinc-500 mb-1">Balance</span>
+                  <span className={cn(
+                    "text-xs sm:text-lg font-black num",
+                    t.net >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
+                  )}>
+                    {t.net >= 0 ? '+' : ''}{formatCurrency(t.net, t.currency)}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -300,14 +307,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                             </div>
 
                             {/* Center Info Section */}
-                            <div className="flex-1 min-w-0 pr-24">
-                              <div className="flex items-center justify-between gap-3">
-                                <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                            <div className="flex-1 min-w-0 pr-2 sm:pr-24">
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="text-xs sm:text-sm font-bold text-zinc-900 truncate min-w-0 flex-1">
                                   {t.description || t.category}
                                 </h4>
                                 <span
                                   className={cn(
-                                    'text-xs font-black whitespace-nowrap num tracking-tight',
+                                    'text-xs sm:text-sm font-black whitespace-nowrap num shrink-0',
                                     t.type === 'income' ? 'text-emerald-600 dark:text-[#52C447]' : 'text-zinc-800 dark:text-white'
                                   )}
                                 >
@@ -316,20 +323,51 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                                 </span>
                               </div>
 
-                              <div className="flex items-center justify-between gap-2 mt-1">
+                              <div className="flex items-center justify-between gap-2 mt-1.5 w-full">
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 text-zinc-500 dark:text-zinc-400 truncate">
+                                  <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 text-zinc-500 dark:text-zinc-400 max-w-[100px] sm:max-w-none truncate">
                                     {t.category}
                                   </span>
+                                  {t.goalId && savingsGoals.find(g => g.id === t.goalId) && (
+                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 max-w-[80px] sm:max-w-none truncate flex items-center gap-1">
+                                      <Target size={10} strokeWidth={3} />
+                                      {savingsGoals.find(g => g.id === t.goalId)?.title}
+                                    </span>
+                                  )}
                                   <span className="text-[9px] font-semibold text-zinc-400 dark:text-zinc-500 num whitespace-nowrap">
                                     {format(parseISO(t.date), 'HH:mm')}
                                   </span>
                                 </div>
+                                
+                                {/* Mobile Action Menu (inline) */}
+                                <div className="flex sm:hidden items-center gap-0.5 shrink-0">
+                                  <button
+                                    onClick={() => handleDuplicate(t)}
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+                                    aria-label={`Duplicar ${t.description || t.category}`}
+                                  >
+                                    <Copy size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEdit(t)}
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+                                    aria-label={`Editar ${t.description || t.category}`}
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteRequest(t)}
+                                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-zinc-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer"
+                                    aria-label={`Eliminar ${t.description || t.category}`}
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
 
-                            {/* Floating Action Menu disclosed on card hover */}
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 bg-white/95 dark:bg-[#151C15]/95 pl-4 rounded-l-xl z-20 shadow-[-8px_0_12px_-4px_rgba(255,255,255,1)] dark:shadow-[-8px_0_12px_-4px_rgba(21,28,21,1)]">
+                            {/* Desktop Floating Action Menu disclosed on card hover */}
+                            <div className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-white/95 dark:bg-[#151C15]/95 pl-4 rounded-l-xl z-20 shadow-[-8px_0_12px_-4px_rgba(255,255,255,1)] dark:shadow-[-8px_0_12px_-4px_rgba(21,28,21,1)]">
                               <button
                                 onClick={() => handleDuplicate(t)}
                                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"

@@ -32,7 +32,7 @@ interface RecurringExpenseDoc {
   category: string;
   type: 'income' | 'expense';
   frequency: 'daily' | 'weekly' | 'monthly';
-  dayOfMonth?: number;
+  dayOfMonth?: number | number[];
   daysOfWeek?: number[];
   notifyTime: string;
   enabled: boolean;
@@ -119,9 +119,9 @@ export const sendRecurringReminders = onSchedule(
         dayMatches = (rec.daysOfWeek ?? []).includes(todayDow);
         expectedKey = currentDateKey;
       } else if (rec.frequency === 'monthly') {
-        const day = rec.dayOfMonth ?? 0;
-        dayMatches = day === today || (isLastDay && day > today);
-        expectedKey = currentMonthKey;
+        const days = Array.isArray(rec.dayOfMonth) ? rec.dayOfMonth : [rec.dayOfMonth ?? 0];
+        dayMatches = days.some((day) => day === today || (isLastDay && day > today));
+        expectedKey = Array.isArray(rec.dayOfMonth) ? currentDateKey : currentMonthKey;
       }
       if (!dayMatches) continue;
       if (rec.lastNotifiedKey === expectedKey) continue;

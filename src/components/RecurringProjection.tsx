@@ -195,7 +195,7 @@ interface KpiProps {
 const Kpi: React.FC<KpiProps> = ({ label, value, icon, tone }) => (
   <div
     className={cn(
-      'rounded-2xl p-3 sm:p-4 border',
+      'rounded-2xl p-2.5 sm:p-4 border flex flex-col min-w-0',
       tone === 'expense' && 'bg-zinc-50 border-zinc-100',
       tone === 'income' && 'bg-emerald-50/60 border-emerald-100',
       tone === 'neutral' && 'bg-zinc-50 border-zinc-100'
@@ -203,16 +203,16 @@ const Kpi: React.FC<KpiProps> = ({ label, value, icon, tone }) => (
   >
     <div
       className={cn(
-        'inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest',
+        'flex items-start gap-1 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider leading-tight',
         tone === 'expense' && 'text-zinc-500',
         tone === 'income' && 'text-emerald-700',
         tone === 'neutral' && 'text-zinc-500'
       )}
     >
-      {icon}
-      <span className="truncate">{label}</span>
+      <span className="shrink-0 mt-0.5">{icon}</span>
+      <span className="break-words hyphens-auto">{label}</span>
     </div>
-    <p className="text-base sm:text-lg font-semibold text-zinc-900 num mt-1 leading-tight break-words">
+    <p className="text-[13px] sm:text-base font-semibold text-zinc-900 num mt-1.5 leading-tight break-all">
       {value}
     </p>
   </div>

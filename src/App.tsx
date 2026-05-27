@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FinanceProvider, useFinance } from './context/FinanceContext';
+import { useFinance } from './context/FinanceContext';
 import {
   type AnalysisPeriod,
   BalanceHero,
@@ -118,7 +118,7 @@ function AppContent() {
         <header className="sticky top-0 z-30 bg-zinc-50/80 backdrop-blur-xl pt-[env(safe-area-inset-top)] border-b border-zinc-200/50">
           <div className="max-w-[1580px] mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-400 mb-1">
+              <p className="text-sm font-bold uppercase tracking-[0.32em] text-zinc-400 mb-1">
                 {dateLabel}
               </p>
               <h1 className="text-2xl sm:text-[32px] font-semibold tracking-tight text-emerald-900">
@@ -195,7 +195,7 @@ function AppContent() {
         </AnimatePresence>
         </main>
 
-        <footer className="hidden sm:flex max-w-[1580px] w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-400">
+        <footer className="hidden sm:flex max-w-[1580px] w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-sm font-mono uppercase tracking-[0.2em] text-zinc-400">
           <span>© {today.getFullYear()} MONA</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1 h-1 rounded-full bg-emerald-500" />
@@ -287,7 +287,7 @@ const AnalysisSection: React.FC = () => {
               onClick={() => setPeriod(f.id)}
               aria-pressed={period === f.id}
               className={cn(
-                'px-6 py-2.5 rounded-2xl text-[11px] font-bold uppercase tracking-[0.3em] transition-all duration-300',
+                'px-6 py-2.5 rounded-2xl text-sm font-bold uppercase tracking-[0.3em] transition-all duration-300',
                 period === f.id
                   ? 'bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(47,90,41,0.25)] scale-105'
                   : 'bg-white/60 backdrop-blur-md border border-[#e7dfd1] text-[#7c7361] hover:bg-white hover:shadow-md'
@@ -331,9 +331,5 @@ const AnalysisSection: React.FC = () => {
 };
 
 export default function App() {
-  return (
-    <FinanceProvider>
-      <AppContent />
-    </FinanceProvider>
-  );
+  return <AppContent />;
 }

@@ -70,8 +70,8 @@ export interface RecurringExpense {
   category: string;
   type: TransactionType;
   frequency: RecurringFrequency;
-  /** Día del mes (1–31). Sólo si frequency === 'monthly'. */
-  dayOfMonth?: number;
+  /** Día del mes (1–31). Puede ser un arreglo (ej. [15, 30]). Sólo si frequency === 'monthly'. */
+  dayOfMonth?: number | number[];
   /** Días de la semana (0=Domingo, 6=Sábado). Sólo si frequency === 'weekly'. */
   daysOfWeek?: number[];
   /** Hora local "HH:mm" en la que disparar la notificación. */

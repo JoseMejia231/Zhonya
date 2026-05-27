@@ -100,8 +100,12 @@ service cloud.firestore {
              data.frequency in ['daily', 'weekly', 'monthly'] &&
              data.notifyTime is string && data.notifyTime.matches('^[0-2][0-9]:[0-5][0-9]$') &&
              (
-               (data.frequency == 'monthly' && data.dayOfMonth is number &&
-                data.dayOfMonth >= 1 && data.dayOfMonth <= 31 && !('daysOfWeek' in data)) ||
+               (data.frequency == 'monthly' &&
+                (
+                  (data.dayOfMonth is number && data.dayOfMonth >= 1 && data.dayOfMonth <= 31) ||
+                  (data.dayOfMonth is list && data.dayOfMonth.size() >= 1 && data.dayOfMonth.size() <= 2)
+                ) &&
+                !('daysOfWeek' in data)) ||
                (data.frequency == 'weekly' && data.daysOfWeek is list &&
                 data.daysOfWeek.size() >= 1 && data.daysOfWeek.size() <= 7 &&
                 !('dayOfMonth' in data)) ||

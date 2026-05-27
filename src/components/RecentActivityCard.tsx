@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Inbox } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Inbox, Target } from 'lucide-react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../utils';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
@@ -24,7 +24,7 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
   limit = 5,
   onSeeAll,
 }) => {
-  const { transactions, settings } = useFinance();
+  const { transactions, settings, savingsGoals } = useFinance();
 
   const recent = useMemo(() => transactions.slice(0, limit), [transactions, limit]);
 
@@ -115,6 +115,12 @@ export const RecentActivityCard: React.FC<RecentActivityCardProps> = ({
                     <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-100 text-zinc-600 font-medium truncate">
                       {t.category}
                     </span>
+                    {t.goalId && savingsGoals.find(g => g.id === t.goalId) && (
+                      <span className="max-w-[140px] truncate inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 text-xs font-medium flex-shrink-0">
+                        <Target size={12} strokeWidth={2} />
+                        {savingsGoals.find(g => g.id === t.goalId)?.title}
+                      </span>
+                    )}
                     <span className="text-[10px] text-zinc-400 num whitespace-nowrap">
                       {dayLabel(t.date)} · {format(parseISO(t.date), 'HH:mm')}
                     </span>

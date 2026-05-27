@@ -6,6 +6,7 @@ import {
   signOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
@@ -39,6 +40,7 @@ setPersistence(auth, indexedDBLocalPersistence).catch(() =>
 export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
 export const signInWithEmail = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email, password);
+export const resetPassword = (email: string) => sendPasswordResetEmail(auth, email);
 export const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
   if (displayName) await updateProfile(cred.user, { displayName });

@@ -10,7 +10,7 @@ const CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN'] as const;
 const CADENCE_OPTIONS: StreakCadence[] = ['weekly', 'biweekly', 'monthly'];
 
 export const SavingsGoalsSection: React.FC = () => {
-  const { savingsGoals, upsertSavingsGoal, deleteSavingsGoal, settings, transactions } = useFinance();
+  const { savingsGoals, upsertSavingsGoal, deleteSavingsGoal, settings, transactions, addTransaction } = useFinance();
   const [isAdding, setIsAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
@@ -32,13 +32,31 @@ export const SavingsGoalsSection: React.FC = () => {
     e.preventDefault();
     if (!title || !targetAmount) return;
 
-    await upsertSavingsGoal({
+    const newGoalId = await upsertSavingsGoal({
       title,
       targetAmount: Number(targetAmount),
-      currentAmount: Number(currentAmount) || 0,
+      currentAmount: 0,
       currency,
       streakCadence: cadence,
     });
+
+    // Si el usuario indicó un monto inicial, lo registramos como una transacción
+    // ligada al goal para que figure en el historial y la racha lo cuente.
+    if (newGoalId && Number(currentAmount) > 0) {
+      const now = new Date();
+      await addTransaction(
+        {
+          amount: Number(currentAmount),
+          type: 'expense',
+          category: 'Metas',
+          description: `Saldo inicial: ${title}`,
+          date: now.toISOString(),
+          currency,
+          goalId: newGoalId,
+        },
+        { syncGoalBalance: true }
+      );
+    }
 
     setTitle('');
     setTargetAmount('');
@@ -184,7 +202,8 @@ export const SavingsGoalsSection: React.FC = () => {
                 <h3 className="font-bold text-zinc-900 tracking-tight pr-8">{goal.title}</h3>
                 <button
                   onClick={() => deleteSavingsGoal(goal.id)}
-                  className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity absolute top-6 right-6"
+                  className="text-red-500 bg-red-50 hover:bg-red-100 hover:text-red-700 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all absolute top-4 right-4 p-2 rounded-xl"
+                  aria-label="Eliminar meta"
                 >
                   <Trash2 size={16} />
                 </button>

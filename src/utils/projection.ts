@@ -33,6 +33,9 @@ function occurrencesInMonth(rec: RecurringExpense, year: number, month: number):
     return lastDay;
   }
   if (rec.frequency === 'monthly') {
+    if (Array.isArray(rec.dayOfMonth)) {
+      return rec.dayOfMonth.filter(d => d >= 1).length;
+    }
     return rec.dayOfMonth && rec.dayOfMonth >= 1 ? 1 : 0;
   }
   // weekly: cuenta todos los días seleccionados que caen en este mes.
