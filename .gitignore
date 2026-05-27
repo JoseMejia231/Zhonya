@@ -4,6 +4,13 @@ dist/
 coverage/
 .DS_Store
 *.log
+.env
 .env.local
+.env.*.local
 .firebase/
 firebase-applet-config.json
+
+# Paquetes temporales para coordinar deploys con el dueño del proyecto.
+# Se regeneran cuando se necesitan, no son fuente de verdad.
+firestore-rules-*.zip
+DEPLOY-RULES.md

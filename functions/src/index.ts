@@ -10,7 +10,10 @@ const db = admin.firestore();
 const messaging = admin.messaging();
 
 const TIME_ZONE = 'America/Santo_Domingo';
-const WINDOW_MINUTES = 1;
+// Debe igualar el intervalo del schedule de sendRecurringReminders: cada ejecución
+// procesa los notifyTime que cayeron en (now - WINDOW_MINUTES, now], así no se
+// pierden recordatorios si una ejecución coincide entre dos minutos.
+const WINDOW_MINUTES = 5;
 
 const monthKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -53,13 +56,13 @@ function timeToMinutes(t: string): number | null {
 }
 
 /**
- * Cron cada 15 min. Procesa cada gasto fijo activo cuyo día (según frequency)
- * sea hoy y cuya hora caiga en la ventana (now - 15min, now]. Idempotente vía
- * lastNotifiedKey ("YYYY-MM-DD" para diario/semanal, "YYYY-MM" para mensual).
+ * Cron cada 5 min. Procesa cada gasto fijo activo cuyo día (según frequency)
+ * sea hoy y cuya hora caiga en la ventana (now - WINDOW_MINUTES, now]. Idempotente
+ * vía lastNotifiedKey ("YYYY-MM-DD" para diario/semanal, "YYYY-MM" para mensual).
  */
 export const sendRecurringReminders = onSchedule(
   {
-    schedule: '* * * * *',
+    schedule: '*/5 * * * *',
     timeZone: TIME_ZONE,
     region: 'us-central1',
     retryCount: 1,

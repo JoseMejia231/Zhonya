@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'mona-v2';
+const CACHE_VERSION = 'mona-v4';
 const PRECACHE_URLS = ['/', '/index.html', '/icon-192.png', '/icon-512.png', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -60,13 +60,15 @@ self.addEventListener('fetch', (event) => {
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
+// Debe coincidir con VITE_FIREBASE_* del cliente (src/firebase.ts). Si cambia el
+// proyecto, actualizar ambos lugares — el SW no puede leer import.meta.env.
 firebase.initializeApp({
-  apiKey: 'AIzaSyBgPXix26Ml56I1Kd3WmBwlW2PwoUstdTU',
-  authDomain: 'zencash-app-67503.firebaseapp.com',
-  projectId: 'zencash-app',
-  storageBucket: 'zencash-app.firebasestorage.app',
-  messagingSenderId: '173957828623',
-  appId: '1:173957828623:web:1823be858e3d883202137a',
+  apiKey: 'AIzaSyDgW_zOZDs5Diz3latkkAkPa4nNton1xs0',
+  authDomain: 'zhonyas-61c6f.firebaseapp.com',
+  projectId: 'zhonyas-61c6f',
+  storageBucket: 'zhonyas-61c6f.firebasestorage.app',
+  messagingSenderId: '894416882406',
+  appId: '1:894416882406:web:e8dd6a2062f91d35b80927',
 });
 
 const messaging = firebase.messaging();
@@ -81,7 +83,10 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/icon-192.png',
     data,
     tag: data.tag || 'mona-recurring',
-    requireInteraction: true,
+    // No la dejamos pegada — son recordatorios de gastos fijos, no alertas críticas.
+    // Si la pierde, vuelve a aparecer la próxima vez que arranque la app o entre
+    // a la sección recurrentes (la lógica de prompt vive en FinanceContext).
+    requireInteraction: false,
     actions: data.recurringId
       ? [
           { action: 'paid', title: 'Pagado' },

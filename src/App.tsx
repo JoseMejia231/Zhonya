@@ -19,6 +19,7 @@ import { Settings } from './components/Settings';
 import { Login } from './components/Login';
 import { UndoToast } from './components/UndoToast';
 import { PushToast } from './components/PushToast';
+import { ErrorToast } from './components/ErrorToast';
 import { RecurringExpenses } from './components/RecurringExpenses';
 import { RecurringConfirmModal } from './components/RecurringConfirmModal';
 // MONA - OS Integration
@@ -207,6 +208,7 @@ function AppContent() {
       {/* MONA - OS Integration */}
       <MONAOSIntegrationBridge />
       <PushToast />
+      <ErrorToast />
       <RecurringConfirmModal />
       <MobileBottomNav active={tab} onChange={setTab} />
     </div>
