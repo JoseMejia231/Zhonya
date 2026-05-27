@@ -37,27 +37,37 @@ import {
 import { cn } from '../utils';
 import { CategoryManager } from './CategoryManager';
 
-type SettingsSection = 
-  | 'general' | 'security' | 'appearance' 
-  | 'notifications' | 'billing' | 'team' 
-  | 'integrations' | 'data' | 'audit' 
+type SettingsSection =
+  | 'general' | 'security' | 'appearance'
+  | 'notifications' | 'billing' | 'team'
+  | 'integrations' | 'data' | 'audit'
   | 'api' | 'support' | 'delete_account';
 
-export const Settings: React.FC = () => {
-  const { logout, user, settings } = useFinance();
-  const [activeSection, setActiveSection] = useState<SettingsSection>('general');
-  const [catOpen, setCatOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
-  const [showBalance, setShowBalance] = useState(true);
-  const [biometrics, setBiometrics] = useState(true);
+// Secciones visibles hoy. El resto sobrevive en el JSX para reactivación futura,
+// pero está oculto del sidebar y no es alcanzable por interacción normal.
+const VISIBLE_SECTIONS: readonly SettingsSection[] = [
+  'general',
+  'appearance',
+  'notifications',
+  'security',
+  'data',
+  'support',
+] as const;
 
-  React.useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
+export const Settings: React.FC = () => {
+  const { logout, user, settings, updateSettings } = useFinance();
+  const [activeSection, setActiveSectionRaw] = useState<SettingsSection>('general');
+  const setActiveSection = (next: SettingsSection) =>
+    setActiveSectionRaw(VISIBLE_SECTIONS.includes(next) ? next : 'general');
+  const [catOpen, setCatOpen] = useState(false);
+  const darkMode = settings.theme === 'dark';
+  const toggleDarkMode = () => {
+    updateSettings({ theme: darkMode ? 'light' : 'dark' });
+  };
+  const hideBalance = !!settings.hideBalance;
+  const toggleHideBalance = () => {
+    updateSettings({ hideBalance: !hideBalance });
+  };
 
   const initials = (user?.displayName || user?.email || '?')
     .split(' ')
@@ -109,63 +119,22 @@ export const Settings: React.FC = () => {
           {/* Section Group: Seguridad y Accesos */}
           <div className="space-y-1">
             <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Seguridad</p>
-            <NavButton 
-              active={activeSection === 'security'} 
+            <NavButton
+              active={activeSection === 'security'}
               onClick={() => setActiveSection('security')}
               icon={<ShieldCheck size={16} />}
               label="Protección"
-            />
-            <NavButton 
-              active={activeSection === 'team'} 
-              onClick={() => setActiveSection('team')}
-              icon={<Users size={16} />}
-              label="Equipo"
             />
           </div>
 
           {/* Section Group: Negocio y Datos */}
           <div className="space-y-1">
-            <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Negocio</p>
-            <NavButton 
-              active={activeSection === 'billing'} 
-              onClick={() => setActiveSection('billing')}
-              icon={<CreditCard size={16} />}
-              label="Suscripción"
-            />
-            <NavButton 
-              active={activeSection === 'integrations'} 
-              onClick={() => setActiveSection('integrations')}
-              icon={<Share2 size={16} />}
-              label="Integraciones"
-            />
-            <NavButton 
-              active={activeSection === 'data'} 
+            <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Datos</p>
+            <NavButton
+              active={activeSection === 'data'}
               onClick={() => setActiveSection('data')}
               icon={<Database size={16} />}
               label="Bóveda de Datos"
-            />
-          </div>
-
-          {/* Section Group: Avanzado */}
-          <div className="space-y-1">
-            <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Avanzado</p>
-            <NavButton 
-              active={activeSection === 'audit'} 
-              onClick={() => setActiveSection('audit')}
-              icon={<FileText size={16} />}
-              label="Auditoría"
-            />
-            <NavButton 
-              active={activeSection === 'api'} 
-              onClick={() => setActiveSection('api')}
-              icon={<Code size={16} />}
-              label="API & Webhooks"
-            />
-            <NavButton 
-              active={activeSection === 'delete_account'} 
-              onClick={() => setActiveSection('delete_account')}
-              icon={<Trash2 size={16} />}
-              label="Eliminar Cuenta"
             />
           </div>
 
@@ -194,10 +163,10 @@ export const Settings: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col bg-white">
         {/* Unified Header */}
-        <header className="px-10 py-8 border-b border-zinc-100 flex items-center justify-between">
-          <div>
+        <header className="px-5 sm:px-10 py-5 sm:py-8 border-b border-zinc-100 flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.3em] mb-1">Mona Infrastructure</p>
-            <h1 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter">
+            <h1 className="text-xl sm:text-3xl font-black text-zinc-900 uppercase tracking-tighter truncate">
               {activeSection === 'general' && 'Panel General'}
               {activeSection === 'security' && 'Protocolos de Seguridad'}
               {activeSection === 'appearance' && 'Estética del Sistema'}
@@ -223,7 +192,7 @@ export const Settings: React.FC = () => {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 p-10 overflow-y-auto no-scrollbar">
+        <div className="flex-1 p-5 sm:p-10 overflow-y-auto no-scrollbar">
           {activeSection === 'general' && (
             <div className="max-w-3xl space-y-12">
               <Section title="Base del Sistema" subtitle="Ajustes críticos de moneda y sincronización.">
@@ -232,11 +201,6 @@ export const Settings: React.FC = () => {
                     <StatusCard icon={<Globe />} label="Región" value="LATAM-S1" />
                  </div>
                  <div className="mt-6 space-y-4">
-                    <FormToggle 
-                      label="Inteligencia Artificial" 
-                      description="Activación del motor de análisis predictivo." 
-                      active={true} 
-                    />
                     <button onClick={() => setCatOpen(true)} className="w-full flex items-center justify-between p-5 bg-zinc-50 border border-zinc-200 rounded-2xl hover:border-[var(--color-brand)] transition-all group">
                        <div className="flex items-center gap-4">
                           <Tag className="text-zinc-400 group-hover:text-[var(--color-brand)]" />
@@ -252,9 +216,9 @@ export const Settings: React.FC = () => {
           {activeSection === 'appearance' && (
             <div className="max-w-3xl space-y-10">
               <Section title="Visualización" subtitle="Gestiona el entorno estético de la aplicación.">
-                <FormToggle label="Modo Nocturno" description="Optimización para entornos de poca luz." active={darkMode} onToggle={() => setDarkMode(!darkMode)} />
+                <FormToggle label="Modo Nocturno" description="Optimización para entornos de poca luz." active={darkMode} onToggle={toggleDarkMode} />
                 <div className="mt-4">
-                   <FormToggle label="Ocultar Saldo" description="Privacidad absoluta en pantallas compartidas." active={!showBalance} onToggle={() => setShowBalance(!showBalance)} />
+                   <FormToggle label="Ocultar Saldo" description="Difumina el capital en el dashboard. Se puede alternar con el ojo del balance." active={hideBalance} onToggle={toggleHideBalance} />
                 </div>
               </Section>
             </div>
@@ -297,7 +261,6 @@ export const Settings: React.FC = () => {
             <div className="max-w-3xl space-y-10">
               <Section title="Protección Blindada" subtitle="Protocolos de acceso y encriptación.">
                  <div className="space-y-4">
-                    <FormToggle label="Biometría" description="FaceID / Fingerprint activo." active={biometrics} onToggle={() => setBiometrics(!biometrics)} />
                     <button className="w-full flex items-center justify-between p-5 bg-white border border-zinc-200 rounded-2xl hover:bg-zinc-50 transition-all">
                        <div className="flex items-center gap-4">
                           <Key className="text-zinc-400" />
@@ -352,7 +315,7 @@ export const Settings: React.FC = () => {
           {activeSection === 'data' && (
             <div className="max-w-3xl space-y-10">
               <Section title="Bóveda de Datos" subtitle="Extrae o purga la información del sistema.">
-                 <div className="grid grid-cols-2 gap-4 mb-8">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                     <DataButton icon={<Download />} label="Exportar JSON" />
                     <DataButton icon={<CloudLightning />} label="Forzar Sync" />
                  </div>
@@ -410,7 +373,7 @@ export const Settings: React.FC = () => {
                           mn_live_4k8392jkd92ks02jd92k1...
                        </code>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        <button className="p-4 border border-zinc-200 rounded-xl flex items-center justify-center gap-2 text-xs font-bold hover:bg-zinc-50 transition-colors">
                           <Terminal size={14} /> Documentación
                        </button>
@@ -484,21 +447,11 @@ export const Settings: React.FC = () => {
             <div className="space-y-1">
               <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Seguridad</p>
               <NavButton active={activeSection === 'security'} onClick={() => setActiveSection('security')} icon={<ShieldCheck size={16} />} label="Protección" />
-              <NavButton active={activeSection === 'team'} onClick={() => setActiveSection('team')} icon={<Users size={16} />} label="Equipo" />
             </div>
-            {/* Negocio */}
+            {/* Datos */}
             <div className="space-y-1">
-              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Negocio</p>
-              <NavButton active={activeSection === 'billing'} onClick={() => setActiveSection('billing')} icon={<CreditCard size={16} />} label="Suscripción" />
-              <NavButton active={activeSection === 'integrations'} onClick={() => setActiveSection('integrations')} icon={<Share2 size={16} />} label="Integraciones" />
+              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Datos</p>
               <NavButton active={activeSection === 'data'} onClick={() => setActiveSection('data')} icon={<Database size={16} />} label="Bóveda de Datos" />
-            </div>
-            {/* Avanzado */}
-            <div className="space-y-1">
-              <p className="px-4 text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-2">Avanzado</p>
-              <NavButton active={activeSection === 'audit'} onClick={() => setActiveSection('audit')} icon={<FileText size={16} />} label="Auditoría" />
-              <NavButton active={activeSection === 'api'} onClick={() => setActiveSection('api')} icon={<Code size={16} />} label="API & Webhooks" />
-              <NavButton active={activeSection === 'delete_account'} onClick={() => setActiveSection('delete_account')} icon={<Trash2 size={16} />} label="Eliminar Cuenta" />
             </div>
             {/* Ayuda */}
             <div className="space-y-1 pt-4 border-t border-zinc-200">

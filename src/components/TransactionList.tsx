@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatCurrency, cn } from '../utils';
+import { groupTotalsByCurrency } from '../utils/money';
 import { Trash2, ArrowUpRight, ArrowDownLeft, Inbox, Search, Pencil, Copy, Plus } from 'lucide-react';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -57,15 +58,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
     });
   }, [filteredTransactions, typeFilter, searchQuery]);
 
-  const summary = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    for (const t of effectivelyFiltered) {
-      if (t.type === 'income') income += t.amount;
-      else expense += t.amount;
-    }
-    return { income, expense, net: income - expense };
-  }, [effectivelyFiltered]);
+  // Totales agrupados por moneda. Cuando todas las txs comparten una sola
+  // moneda, el array tiene un único elemento y la UI se ve igual que siempre.
+  const totalsByCurrency = useMemo(
+    () => groupTotalsByCurrency(effectivelyFiltered, settings.currency || 'DOP'),
+    [effectivelyFiltered, settings.currency]
+  );
 
   const visibleTransactions = effectivelyFiltered.slice(0, visibleCount);
 
@@ -187,37 +185,41 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
         />
       </div>
 
-      {/* Balanced Summary Widget Card */}
-      {(effectivelyFiltered.length > 0 || filteredTransactions.length > 0) && (
-        <div className="grid grid-cols-3 gap-1 mb-6 p-1 bg-zinc-50 dark:bg-zinc-950/60 rounded-2xl border border-zinc-200 relative overflow-hidden">
-          {/* Income Column */}
-          <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Ingresos</span>
-            <span className="text-[11px] font-extrabold text-emerald-600 dark:text-[#52C447] num flex items-center gap-0.5">
-              <ArrowDownLeft size={10} className="stroke-[3]" />
-              {formatCurrency(summary.income, settings.currency)}
-            </span>
-          </div>
-
-          {/* Expense Column */}
-          <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Gastos</span>
-            <span className="text-[11px] font-extrabold text-rose-600 dark:text-red-400 num flex items-center gap-0.5">
-              <ArrowUpRight size={10} className="stroke-[3]" />
-              {formatCurrency(summary.expense, settings.currency)}
-            </span>
-          </div>
-
-          {/* Net Column */}
-          <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-            <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Balance</span>
-            <span className={cn(
-              "text-[11px] font-black num",
-              summary.net >= 0 ? "text-emerald-700 dark:text-[#52C447]" : "text-rose-700 dark:text-red-400"
-            )}>
-              {summary.net >= 0 ? '+' : ''}{formatCurrency(summary.net, settings.currency)}
-            </span>
-          </div>
+      {/* Balanced Summary Widget Card — una fila por moneda */}
+      {(effectivelyFiltered.length > 0 || filteredTransactions.length > 0) && totalsByCurrency.length > 0 && (
+        <div className="mb-6 space-y-1 p-1 bg-zinc-50 dark:bg-zinc-950/60 rounded-2xl border border-zinc-200 relative overflow-hidden">
+          {totalsByCurrency.map((t) => (
+            <div key={t.currency} className="grid grid-cols-3 gap-1">
+              {totalsByCurrency.length > 1 && (
+                <span className="col-span-3 px-2 pt-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {t.currency}
+                </span>
+              )}
+              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Ingresos</span>
+                <span className="text-[11px] font-extrabold text-emerald-600 dark:text-[#52C447] num flex items-center gap-0.5">
+                  <ArrowDownLeft size={10} className="stroke-[3]" />
+                  {formatCurrency(t.income, t.currency)}
+                </span>
+              </div>
+              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Gastos</span>
+                <span className="text-[11px] font-extrabold text-rose-600 dark:text-red-400 num flex items-center gap-0.5">
+                  <ArrowUpRight size={10} className="stroke-[3]" />
+                  {formatCurrency(t.expense, t.currency)}
+                </span>
+              </div>
+              <div className="flex flex-col items-center text-center p-2.5 bg-white rounded-xl border border-zinc-100 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
+                <span className="text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-1">Balance</span>
+                <span className={cn(
+                  "text-[11px] font-black num",
+                  t.net >= 0 ? "text-emerald-700 dark:text-[#52C447]" : "text-rose-700 dark:text-red-400"
+                )}>
+                  {t.net >= 0 ? '+' : ''}{formatCurrency(t.net, t.currency)}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

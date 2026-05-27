@@ -154,16 +154,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
 
     const parsedAmount = Number(amount);
 
+    const linkedGoalId = category === 'Metas' && selectedGoalId ? selectedGoalId : undefined;
+
     addTransaction({
       amount: parsedAmount,
       type,
       category,
       description,
       date: localDate.toISOString(),
+      currency: localCurrency,
+      ...(linkedGoalId ? { goalId: linkedGoalId } : {}),
     });
 
-    if (category === 'Metas' && selectedGoalId) {
-      const targetGoal = savingsGoals.find(g => g.id === selectedGoalId);
+    if (linkedGoalId) {
+      const targetGoal = savingsGoals.find(g => g.id === linkedGoalId);
       if (targetGoal) {
         upsertSavingsGoal({
           ...targetGoal,

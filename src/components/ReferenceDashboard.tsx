@@ -30,6 +30,8 @@ import {
   ArrowUpRight,
   BadgeDollarSign,
   ChevronRight,
+  Eye,
+  EyeOff,
   Info,
   Sparkles,
   TrendingDown,
@@ -38,6 +40,7 @@ import {
 } from 'lucide-react';
 import { cn, formatCurrency } from '../utils';
 import { useFinance } from '../context/FinanceContext';
+import { groupTotalsByCurrency } from '../utils/money';
 
 type LedgerItem = {
   id: string;
@@ -351,6 +354,25 @@ export function useDashboardModel({ period = 'month' }: { period?: AnalysisPerio
 
 export const BalanceHero: React.FC = () => {
   const { capital, balanceDelta, currency } = useDashboardModel();
+  const { settings, updateSettings, transactions } = useFinance();
+  const isHidden = !!settings.hideBalance;
+  const toggleHidden = () => updateSettings({ hideBalance: !isHidden });
+
+  // Totales del mes en curso, agrupados por moneda. Las txs legacy sin currency
+  // caen al settings.currency, así que cuando todo el historial usa una sola
+  // moneda el comportamiento es idéntico al anterior.
+  const today = useMemo(() => new Date(), []);
+  const monthTotals = useMemo(() => {
+    const monthTxs = transactions.filter((t) => isSameMonth(parseISO(t.date), today));
+    return groupTotalsByCurrency(monthTxs, settings.currency || 'DOP');
+  }, [transactions, today, settings.currency]);
+
+  const hasMultiple = monthTotals.length > 1;
+  const primary = monthTotals[0];
+  // Si no hay txs aún, caemos al `capital` del modelo (que tiene sample data).
+  const headlineAmount = primary ? primary.net : capital;
+  const headlineCurrency = primary ? primary.currency : currency;
+
   const trendClass = balanceDelta >= 0 ? 'bg-white/20 text-white' : 'bg-rose-500/20 text-rose-100';
   const TrendIcon = balanceDelta >= 0 ? ArrowUpRight : ArrowDownLeft;
 
@@ -369,18 +391,49 @@ export const BalanceHero: React.FC = () => {
         <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white/90 glass-surface border-white/10">
           <Wallet size={20} strokeWidth={2} />
         </div>
-        <div className={cn('inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold num glass-surface border-white/5', trendClass)}>
-          <TrendIcon size={13} />
-          {balanceDelta >= 0 ? '+' : ''}
-          {balanceDelta.toFixed(1)}%
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleHidden}
+            aria-label={isHidden ? 'Mostrar saldo' : 'Ocultar saldo'}
+            aria-pressed={isHidden}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white/80 hover:bg-white/15 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 cursor-pointer"
+          >
+            {isHidden ? <Eye size={15} /> : <EyeOff size={15} />}
+          </button>
+          {/* El delta vs mes anterior solo tiene sentido con una sola moneda;
+              comparar porcentajes entre divisas distintas es ruido visual. */}
+          {!hasMultiple && (
+            <div className={cn('inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-bold num glass-surface border-white/5', trendClass)}>
+              <TrendIcon size={13} />
+              {balanceDelta >= 0 ? '+' : ''}
+              {balanceDelta.toFixed(1)}%
+            </div>
+          )}
         </div>
       </div>
 
       <div className="relative mt-4">
         <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-white/50">Capital Activo</p>
-        <h2 className="mt-2 text-[36px] font-bold tracking-tight num leading-none text-white drop-shadow-sm">
-          {formatMoney(capital, currency)}
-        </h2>
+        <div className={cn('mt-2 transition-all duration-300', isHidden && 'blur-md select-none')} aria-hidden={isHidden}>
+          <h2
+            className={cn(
+              'font-bold tracking-tight num leading-none text-white drop-shadow-sm',
+              hasMultiple ? 'text-[28px]' : 'text-[36px]'
+            )}
+          >
+            {isHidden ? '••••••' : formatMoney(headlineAmount, headlineCurrency)}
+          </h2>
+          {hasMultiple && (
+            <ul className="mt-2 space-y-0.5">
+              {monthTotals.slice(1).map((t) => (
+                <li key={t.currency} className="text-sm font-semibold num text-white/70">
+                  {isHidden ? '•••••' : formatMoney(t.net, t.currency)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </motion.div>
   );

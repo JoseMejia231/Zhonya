@@ -22,13 +22,14 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { updateTransaction, addTransaction, settings, updateSettings, transactions } = useFinance();
-  
+  const { updateTransaction, addTransaction, settings, transactions } = useFinance();
+
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
+  const [currency, setCurrency] = useState<string>(settings.currency || 'DOP');
   const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,8 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
       setAmount(transaction.amount.toString());
       setCategory(transaction.category);
       setDescription(transaction.description || '');
+      // Cargar la moneda guardada de esta tx; fallback al default si es legacy.
+      setCurrency(transaction.currency || settings.currency || 'DOP');
       
       if (mode === 'edit') {
         // Formato local YYYY-MM-DD para el input type="date"
@@ -99,6 +102,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
         category,
         description,
         date: targetDate.toISOString(),
+        currency,
       });
     } else {
       await addTransaction({
@@ -107,6 +111,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
         category,
         description,
         date: targetDate.toISOString(),
+        currency,
       });
     }
 
@@ -222,13 +227,13 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
                     <div className="relative flex w-[6.8rem] shrink-0 items-center border-r border-zinc-200 bg-white/70">
                       <select
                         aria-label="Moneda"
-                        value={settings.currency}
-                        onChange={(e) => void updateSettings({ currency: e.target.value })}
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
                         className="h-full w-full appearance-none bg-transparent px-4 py-3.5 pr-8 text-[1.35rem] font-light uppercase tracking-tight text-zinc-900 focus:outline-none num"
                       >
-                        {CURRENCIES.map((currency) => (
-                          <option key={currency} value={currency}>
-                            {currency}
+                        {CURRENCIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
                           </option>
                         ))}
                       </select>
