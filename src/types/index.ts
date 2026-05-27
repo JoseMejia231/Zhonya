@@ -8,6 +8,10 @@ export interface Transaction {
   description: string;
   type: TransactionType;
   uid: string;
+  /** Si la categoría es 'Metas', referencia el SavingsGoal al que esta transacción aporta. */
+  goalId?: string;
+  /** Moneda en la que se registró el monto. Si falta, se asume settings.currency vigente. */
+  currency?: string;
 }
 
 export interface UserSettings {
@@ -18,6 +22,8 @@ export interface UserSettings {
   categories?: string[]; // Deprecated, kept for backward compatibility and migration
   /** Presupuesto mensual por categoría (en la moneda activa). Falta = sin límite. */
   budgets?: Record<string, number>;
+  /** Si está activo, los montos se muestran ofuscados en el dashboard. */
+  hideBalance?: boolean;
 }
 
 export type FilterType = 'all' | 'day' | 'month' | 'year';
@@ -78,6 +84,8 @@ export interface RecurringExpense {
   createdAt: string; // ISO
 }
 
+export type StreakCadence = 'weekly' | 'biweekly' | 'monthly';
+
 export interface SavingsGoal {
   id: string;
   uid: string;
@@ -87,4 +95,6 @@ export interface SavingsGoal {
   currency?: string;
   createdAt: string; // ISO
   deadline?: string; // ISO
+  /** Periodicidad con la que se evalúa la racha de aportes. Default 'monthly'. */
+  streakCadence?: StreakCadence;
 }

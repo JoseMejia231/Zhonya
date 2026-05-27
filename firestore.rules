@@ -59,27 +59,30 @@ service cloud.firestore {
 
     function isValidTransaction(data) {
       return hasRequiredFields(['id', 'amount', 'type', 'category', 'date', 'uid']) &&
-             hasOnlyAllowedFields(['id', 'amount', 'type', 'category', 'description', 'date', 'uid']) &&
+             hasOnlyAllowedFields(['id', 'amount', 'type', 'category', 'description', 'date', 'uid', 'goalId', 'currency']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.amount is number && data.amount >= 0 &&
              data.type in ['income', 'expense'] &&
              data.category is string && data.category.size() > 0 && data.category.size() < 50 &&
              (!('description' in data) || (data.description is string && data.description.size() < 200)) &&
              isValidDateString(data.date) &&
-             data.uid == request.auth.uid;
+             data.uid == request.auth.uid &&
+             (!('goalId' in data) || (data.goalId is string && data.goalId.size() > 0 && data.goalId.size() < 100)) &&
+             (!('currency' in data) || (data.currency is string && data.currency.size() > 0 && data.currency.size() < 10));
     }
 
     function isValidSettings(data) {
       return hasRequiredFields(['currency', 'theme']) &&
              // Must have either legacy 'categories' or new split fields
              ('categories' in data || ('incomeCategories' in data && 'expenseCategories' in data)) &&
-             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'incomeCategories', 'expenseCategories', 'budgets']) &&
+             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'incomeCategories', 'expenseCategories', 'budgets', 'hideBalance']) &&
              data.currency is string && data.currency.size() > 0 && data.currency.size() < 10 &&
              data.theme in ['light', 'dark'] &&
              (!('categories' in data) || (data.categories is list && data.categories.size() < 50)) &&
              (!('incomeCategories' in data) || (data.incomeCategories is list && data.incomeCategories.size() < 50)) &&
              (!('expenseCategories' in data) || (data.expenseCategories is list && data.expenseCategories.size() < 50)) &&
-             (!('budgets' in data) || (data.budgets is map && data.budgets.size() < 60));
+             (!('budgets' in data) || (data.budgets is map && data.budgets.size() < 60)) &&
+             (!('hideBalance' in data) || data.hideBalance is bool);
     }
 
     function isValidRecurring(data) {
@@ -148,14 +151,16 @@ service cloud.firestore {
 
     function isValidSavingsGoal(data) {
       return hasRequiredFields(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
-             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline', 'currency', 'streakCadence']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.uid == request.auth.uid &&
              data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
              data.targetAmount is number && data.targetAmount > 0 &&
              data.currentAmount is number && data.currentAmount >= 0 &&
              isValidDateString(data.createdAt) &&
-             (!('deadline' in data) || isValidDateString(data.deadline));
+             (!('deadline' in data) || isValidDateString(data.deadline)) &&
+             (!('currency' in data) || (data.currency is string && data.currency.size() > 0 && data.currency.size() < 10)) &&
+             (!('streakCadence' in data) || data.streakCadence in ['weekly', 'biweekly', 'monthly']);
     }
 
     // ===============================================================

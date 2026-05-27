@@ -65,6 +65,8 @@ interface FinanceContextType extends FinanceState {
   savingsGoals: SavingsGoal[];
   upsertSavingsGoal: (goal: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }) => Promise<void>;
   deleteSavingsGoal: (id: string) => Promise<void>;
+  errorMessage: string | null;
+  dismissError: () => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -114,6 +116,22 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [inAppNotification, setInAppNotification] = useState<{ title: string; body: string } | null>(null);
   const [recurringPrompt, setRecurringPrompt] = useState<{ recurringId: string; periodKey?: string } | null>(null);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const errorTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Muestra un toast de error y lo auto-descarta. Logueamos siempre el error real
+  // para diagnóstico; al usuario solo le mostramos un mensaje corto.
+  const showError = React.useCallback((label: string, err?: unknown) => {
+    if (err) console.error(`[finance] ${label}:`, err);
+    setErrorMessage(label);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => setErrorMessage(null), 6000);
+  }, []);
+
+  const dismissError = () => {
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    setErrorMessage(null);
+  };
 
   // Always-fresh ref for settings to avoid stale closures in async Firestore writes
   const latestSettingsRef = React.useRef<UserSettings>(state.settings);
@@ -132,6 +150,9 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     };
     if (settings.budgets && Object.keys(settings.budgets).length > 0) {
       payload.budgets = settings.budgets;
+    }
+    if (settings.hideBalance) {
+      payload.hideBalance = true;
     }
     return payload;
   };
@@ -153,62 +174,127 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     if (!user) return;
 
+    // Fallback: si Firestore no responde en 10 s (sin error tampoco), salimos del
+    // skeleton para no dejar al usuario colgado. Los listeners se mantienen activos.
+    const loadingTimeout = setTimeout(() => setLoading(false), 10000);
+
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
-    const unsubscribeSettings = onSnapshot(settingsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data() as UserSettings;
-        // Migración de datos antiguos
-        if (data.categories && (!data.incomeCategories || !data.expenseCategories)) {
-          const defaultIncomes = ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'];
-          data.incomeCategories = data.categories.filter(c => defaultIncomes.includes(c));
-          if (data.incomeCategories.length === 0) data.incomeCategories = ['Salario', 'Otros Ingresos'];
-          data.expenseCategories = data.categories.filter(c => !defaultIncomes.includes(c));
-          if (data.expenseCategories.length === 0) data.expenseCategories = ['Otros Gastos'];
+    const unsubscribeSettings = onSnapshot(
+      settingsRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as UserSettings;
+          // Migración de datos antiguos
+          if (data.categories && (!data.incomeCategories || !data.expenseCategories)) {
+            const defaultIncomes = ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'];
+            data.incomeCategories = data.categories.filter(c => defaultIncomes.includes(c));
+            if (data.incomeCategories.length === 0) data.incomeCategories = ['Salario', 'Otros Ingresos'];
+            data.expenseCategories = data.categories.filter(c => !defaultIncomes.includes(c));
+            if (data.expenseCategories.length === 0) data.expenseCategories = ['Otros Gastos'];
+          }
+          dispatch({ type: 'UPDATE_SETTINGS', payload: data });
+        } else {
+          const payload = buildSettingsPayload(latestSettingsRef.current);
+          setDoc(settingsRef, payload).catch((err) =>
+            showError('No se pudo inicializar tu configuración', err)
+          );
         }
-        dispatch({ type: 'UPDATE_SETTINGS', payload: data });
-      } else {
-        const payload = buildSettingsPayload(latestSettingsRef.current);
-        setDoc(settingsRef, payload);
+      },
+      (err) => {
+        setLoading(false);
+        showError('No se pudo cargar tu configuración', err);
       }
-    });
+    );
 
     const transactionsRef = collection(db, 'users', user.uid, 'transactions');
     const q = query(transactionsRef, orderBy('date', 'desc'));
-    const unsubscribeTransactions = onSnapshot(q, (snapshot) => {
-      const transactions = snapshot.docs.map((doc) => doc.data() as Transaction);
-      dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
-      setLoading(false);
-    });
+    const unsubscribeTransactions = onSnapshot(
+      q,
+      (snapshot) => {
+        const transactions = snapshot.docs.map((doc) => doc.data() as Transaction);
+        dispatch({ type: 'SET_TRANSACTIONS', payload: transactions });
+        setLoading(false);
+      },
+      (err) => {
+        setLoading(false);
+        showError('No se pudieron cargar tus movimientos', err);
+      }
+    );
 
     const recurringRef = collection(db, 'users', user.uid, 'recurringExpenses');
     const recurringQuery = query(recurringRef, where('uid', '==', user.uid));
-    const unsubscribeRecurring = onSnapshot(recurringQuery, (snapshot) => {
-      setRecurring(snapshot.docs.map((d) => d.data() as RecurringExpense));
-    });
+    const unsubscribeRecurring = onSnapshot(
+      recurringQuery,
+      (snapshot) => {
+        setRecurring(snapshot.docs.map((d) => d.data() as RecurringExpense));
+      },
+      (err) => showError('No se pudieron cargar los gastos fijos', err)
+    );
 
     const wheelsRef = collection(db, 'users', user.uid, 'wheels');
     const wheelsQuery = query(wheelsRef, where('uid', '==', user.uid));
-    const unsubscribeWheels = onSnapshot(wheelsQuery, (snapshot) => {
-      setWheels(snapshot.docs.map((d) => d.data() as Wheel));
-    });
+    const unsubscribeWheels = onSnapshot(
+      wheelsQuery,
+      (snapshot) => {
+        setWheels(snapshot.docs.map((d) => d.data() as Wheel));
+      },
+      (err) => showError('No se pudieron cargar las ruletas', err)
+    );
 
-    // Metas de ahorro almacenadas localmente para evitar problemas de reglas en Firebase
-    const savedGoals = localStorage.getItem(`mona_goals_${user.uid}`);
-    if (savedGoals) {
-      try {
-        setSavingsGoals(JSON.parse(savedGoals));
-      } catch (e) {
-        console.error('Error parsing local goals', e);
-      }
-    }
+    const goalsRef = collection(db, 'users', user.uid, 'savingsGoals');
+    const goalsQuery = query(goalsRef, where('uid', '==', user.uid));
+    const unsubscribeGoals = onSnapshot(
+      goalsQuery,
+      (snapshot) => {
+        const fromCloud = snapshot.docs.map((d) => d.data() as SavingsGoal);
+        // Migración suave one-shot: si Firestore está vacío pero hay datos viejos
+        // en localStorage, los subimos. Después de la primera subida, el listener
+        // refleja Firestore y borramos la copia local para evitar divergencia.
+        const localKey = `mona_goals_${user.uid}`;
+        if (fromCloud.length === 0) {
+          const raw = localStorage.getItem(localKey);
+          if (raw) {
+            try {
+              const legacy = JSON.parse(raw) as SavingsGoal[];
+              Promise.all(
+                legacy.map((g) =>
+                  setDoc(doc(db, 'users', user.uid, 'savingsGoals', g.id), {
+                    ...g,
+                    uid: user.uid,
+                  })
+                )
+              )
+                .then(() => localStorage.removeItem(localKey))
+                .catch((err) => showError('No se pudieron migrar tus metas', err));
+            } catch (e) {
+              console.error('Error parsing legacy goals:', e);
+            }
+          }
+        } else {
+          // Ya hay datos en cloud: la copia local quedó obsoleta.
+          localStorage.removeItem(localKey);
+        }
+        setSavingsGoals(fromCloud);
+      },
+      (err) => showError('No se pudieron cargar tus metas', err)
+    );
 
     return () => {
+      clearTimeout(loadingTimeout);
       unsubscribeSettings();
       unsubscribeTransactions();
       unsubscribeRecurring();
       unsubscribeWheels();
+      unsubscribeGoals();
     };
-  }, [user]);
+  }, [user, showError]);
+
+  // Aplicar el tema persistido a <html> para que sobreviva refresh.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (state.settings.theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+  }, [state.settings.theme]);
 
   // Foreground push messages.
   useEffect(() => {
@@ -230,15 +316,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const enableNotifications = async (): Promise<boolean> => {
     if (!user) return false;
-    const token = await requestPushToken();
-    setNotificationStatus(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
-    if (!token) return false;
-    await setDoc(doc(db, 'users', user.uid, 'pushTokens', token), {
-      token,
-      createdAt: new Date().toISOString(),
-      userAgent: navigator.userAgent.slice(0, 200),
-    });
-    return true;
+    try {
+      const token = await requestPushToken();
+      setNotificationStatus(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported');
+      if (!token) return false;
+      await setDoc(doc(db, 'users', user.uid, 'pushTokens', token), {
+        token,
+        createdAt: new Date().toISOString(),
+        userAgent: navigator.userAgent.slice(0, 200),
+      });
+      return true;
+    } catch (err) {
+      showError('No se pudieron activar las notificaciones', err);
+      return false;
+    }
+  };
+
+  // Helper: ajusta el currentAmount de un goal en delta (puede ser negativo).
+  // No baja de 0 para evitar estados absurdos si el usuario reasigna metas.
+  const adjustGoalAmount = async (goalId: string, delta: number) => {
+    if (!user || delta === 0) return;
+    const goal = savingsGoals.find((g) => g.id === goalId);
+    if (!goal) return;
+    const nextAmount = Math.max(0, goal.currentAmount + delta);
+    const payload: SavingsGoal = {
+      ...goal,
+      currentAmount: nextAmount,
+    };
+    await setDoc(doc(db, 'users', user.uid, 'savingsGoals', goalId), payload);
   };
 
   const addTransaction = async (t: Omit<Transaction, 'id' | 'uid'>) => {
@@ -249,12 +354,38 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       id,
       uid: user.uid,
     };
-    await setDoc(doc(db, 'users', user.uid, 'transactions', id), newTransaction);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'transactions', id), newTransaction);
+    } catch (err) {
+      showError('No se pudo guardar el movimiento', err);
+    }
   };
 
   const updateTransaction = async (id: string, updates: Partial<Omit<Transaction, 'id' | 'uid'>>) => {
     if (!user) return;
-    await setDoc(doc(db, 'users', user.uid, 'transactions', id), updates, { merge: true });
+    // Para mantener el currentAmount del goal vinculado consistente, comparamos
+    // el estado previo con los cambios. Casos: cambia el monto, cambia el goalId,
+    // o se quita/agrega el vínculo de meta.
+    const prev = state.transactions.find((t) => t.id === id);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'transactions', id), updates, { merge: true });
+    } catch (err) {
+      showError('No se pudo actualizar el movimiento', err);
+      return;
+    }
+    if (!prev) return;
+    const prevGoal = prev.goalId;
+    const nextGoal = 'goalId' in updates ? updates.goalId : prev.goalId;
+    const prevAmount = prev.amount;
+    const nextAmount = 'amount' in updates && typeof updates.amount === 'number' ? updates.amount : prev.amount;
+    if (prevGoal && prevGoal === nextGoal) {
+      // Mismo goal, posible cambio de monto.
+      await adjustGoalAmount(prevGoal, nextAmount - prevAmount);
+    } else {
+      // El vínculo cambió: revertir el viejo, aplicar el nuevo.
+      if (prevGoal) await adjustGoalAmount(prevGoal, -prevAmount);
+      if (nextGoal) await adjustGoalAmount(nextGoal, nextAmount);
+    }
   };
 
   const clearUndoTimer = () => {
@@ -267,8 +398,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteTransaction = async (id: string) => {
     if (!user) return;
     const tx = state.transactions.find((t) => t.id === id) ?? null;
-    await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
+    } catch (err) {
+      showError('No se pudo eliminar el movimiento', err);
+      return;
+    }
     if (tx) {
+      if (tx.goalId) await adjustGoalAmount(tx.goalId, -tx.amount);
       setLastDeleted(tx);
       clearUndoTimer();
       undoTimerRef.current = setTimeout(() => setLastDeleted(null), 5000);
@@ -280,7 +417,14 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const tx = lastDeleted;
     clearUndoTimer();
     setLastDeleted(null);
-    await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'transactions', tx.id), tx);
+    } catch (err) {
+      showError('No se pudo deshacer la eliminación', err);
+      return;
+    }
+    // Re-aplicar el aporte a la meta si la transacción la tenía.
+    if (tx.goalId) await adjustGoalAmount(tx.goalId, tx.amount);
   };
 
   const dismissUndo = () => {
@@ -298,7 +442,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // Build Firestore payload – include legacy 'categories' field for rule compat
     const payload = buildSettingsPayload(merged);
     const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
-    await setDoc(settingsRef, payload);
+    try {
+      await setDoc(settingsRef, payload);
+    } catch (err) {
+      showError('No se pudo guardar la configuración', err);
+    }
   };
 
   const setCategoryBudget = async (category: string, amount: number | null) => {
@@ -356,22 +504,34 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...(existing?.lastNotifiedKey ? { lastNotifiedKey: existing.lastNotifiedKey } : {}),
     };
     void serverTimestamp;
-    await setDoc(doc(db, 'users', user.uid, 'recurringExpenses', id), payload);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'recurringExpenses', id), payload);
+    } catch (err) {
+      showError('No se pudo guardar el gasto fijo', err);
+    }
   };
 
   const toggleRecurring = async (id: string, enabled: boolean) => {
     if (!user) return;
     const target = recurring.find((r) => r.id === id);
     if (!target) return;
-    await setDoc(
-      doc(db, 'users', user.uid, 'recurringExpenses', id),
-      { ...target, enabled }
-    );
+    try {
+      await setDoc(
+        doc(db, 'users', user.uid, 'recurringExpenses', id),
+        { ...target, enabled }
+      );
+    } catch (err) {
+      showError('No se pudo actualizar el gasto fijo', err);
+    }
   };
 
   const deleteRecurring = async (id: string) => {
     if (!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'recurringExpenses', id));
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'recurringExpenses', id));
+    } catch (err) {
+      showError('No se pudo eliminar el gasto fijo', err);
+    }
   };
 
   const upsertWheel = async (
@@ -391,23 +551,35 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...(existing?.lastSpunAt ? { lastSpunAt: existing.lastSpunAt } : {}),
       ...(existing?.lastResultId ? { lastResultId: existing.lastResultId } : {}),
     };
-    await setDoc(doc(db, 'users', user.uid, 'wheels', id), payload);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'wheels', id), payload);
+    } catch (err) {
+      showError('No se pudo guardar la ruleta', err);
+    }
   };
 
   const deleteWheel = async (id: string) => {
     if (!user) return;
-    await deleteDoc(doc(db, 'users', user.uid, 'wheels', id));
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'wheels', id));
+    } catch (err) {
+      showError('No se pudo eliminar la ruleta', err);
+    }
   };
 
   const recordWheelSpin = async (wheelId: string, sliceId: string) => {
     if (!user) return;
     const w = wheels.find((x) => x.id === wheelId);
     if (!w) return;
-    await setDoc(doc(db, 'users', user.uid, 'wheels', wheelId), {
-      ...w,
-      lastSpunAt: new Date().toISOString(),
-      lastResultId: sliceId,
-    });
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'wheels', wheelId), {
+        ...w,
+        lastSpunAt: new Date().toISOString(),
+        lastResultId: sliceId,
+      });
+    } catch (err) {
+      showError('No se pudo registrar el giro', err);
+    }
   };
 
   const upsertSavingsGoal = async (
@@ -416,32 +588,33 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return;
     const id = g.id ?? crypto.randomUUID();
     const existing = savingsGoals.find((x) => x.id === id);
+    // El validador de Firestore rechaza claves desconocidas, así que solo incluimos
+    // los campos opcionales cuando tienen valor (omitirlos == undefined-friendly).
     const payload: SavingsGoal = {
       id,
       uid: user.uid,
       title: g.title,
       targetAmount: g.targetAmount,
       currentAmount: g.currentAmount,
-      currency: g.currency,
-      deadline: g.deadline,
       createdAt: existing?.createdAt ?? g.createdAt ?? new Date().toISOString(),
+      ...(g.currency ? { currency: g.currency } : {}),
+      ...(g.deadline ? { deadline: g.deadline } : {}),
+      ...(g.streakCadence ? { streakCadence: g.streakCadence } : {}),
     };
-    
-    setSavingsGoals((prev) => {
-      const updated = prev.filter(x => x.id !== id);
-      updated.push(payload);
-      localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'savingsGoals', id), payload);
+    } catch (err) {
+      showError('No se pudo guardar la meta', err);
+    }
   };
 
   const deleteSavingsGoal = async (id: string) => {
     if (!user) return;
-    setSavingsGoals((prev) => {
-      const updated = prev.filter(x => x.id !== id);
-      localStorage.setItem(`mona_goals_${user.uid}`, JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'savingsGoals', id));
+    } catch (err) {
+      showError('No se pudo eliminar la meta', err);
+    }
   };
 
   const periodKeyFor = (rec: RecurringExpense, when: Date = new Date()): string => {
@@ -476,7 +649,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       description: rec.name,
       date: new Date().toISOString(),
     };
-    await setDoc(doc(db, 'users', user.uid, 'transactions', id), tx);
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'transactions', id), tx);
+      // Marcar el recurrente como notificado para este periodo para que el cron de
+      // Cloud Functions no vuelva a disparar la push del mismo gasto en la ventana.
+      if (rec.lastNotifiedKey !== period) {
+        await setDoc(
+          doc(db, 'users', user.uid, 'recurringExpenses', rec.id),
+          { ...rec, lastNotifiedKey: period }
+        );
+      }
+    } catch (err) {
+      showError('No se pudo registrar el pago', err);
+    }
   };
 
   // SW → app: las acciones de la notificación llegan vía postMessage cuando
@@ -567,6 +752,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         savingsGoals,
         upsertSavingsGoal,
         deleteSavingsGoal,
+        errorMessage,
+        dismissError,
       }}
     >
       {children}
