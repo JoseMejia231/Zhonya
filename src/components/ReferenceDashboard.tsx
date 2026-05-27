@@ -444,14 +444,14 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      className={cn(SURFACES.card, 'p-5 sm:p-6')}
+      className={cn(SURFACES.card, 'p-4 sm:p-5 lg:p-6')}
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold uppercase tracking-[0.28em] text-[#7c7361]">
+      <div className="mb-5 flex items-center justify-between gap-2">
+        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.12em] sm:tracking-[0.24em] text-[#7c7361] truncate">
           Distribución de gastos
         </h2>
         {!isSampleData && total > 0 && (
-          <span className="text-sm font-bold num text-[#6d5533]">
+          <span className="text-xs sm:text-sm font-bold num text-[#6d5533] shrink-0">
             Total: {formatMoney(total, currency)}
           </span>
         )}
@@ -463,16 +463,16 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
           description="Cuando registres gastos en el rango seleccionado, aparecerá la distribución por categoría."
         />
       ) : (
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-        <div className="h-36 w-36 shrink-0">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+        <div className="h-32 w-32 sm:h-36 sm:w-36 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={categoryData}
                 cx="50%"
                 cy="50%"
-                innerRadius={48}
-                outerRadius={65}
+                innerRadius={42}
+                outerRadius={58}
                 paddingAngle={5}
                 dataKey="value"
                 stroke="none"
@@ -485,18 +485,22 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
           </ResponsiveContainer>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 w-full space-y-2.5 min-w-0">
           {visibleData.map((item) => {
             const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0';
             return (
-              <div key={item.name} className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm font-bold uppercase tracking-[0.22em] text-[#6f675a] truncate">{item.name}</span>
+              <div key={item.name} className="flex items-center justify-between gap-2 w-full min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.08em] sm:tracking-[0.16em] text-[#6f675a] truncate">
+                    {item.name}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-medium text-[#9d9687] num">{pct}%</span>
-                  <span className="text-sm font-bold num text-[#6d5533]">{formatMoney(item.value, currency)}</span>
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                  <span className="text-[10px] sm:text-xs font-medium text-[#9d9687] num">{pct}%</span>
+                  <span className="text-xs sm:text-sm font-bold num text-[#6d5533]">
+                    {formatMoney(item.value, currency)}
+                  </span>
                 </div>
               </div>
             );
@@ -504,7 +508,7 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
           {hasMore && (
             <button
               onClick={() => setExpanded((v) => !v)}
-              className="mt-1 flex items-center gap-1 text-xs font-bold uppercase tracking-[0.24em] text-[#75806b] transition-colors hover:text-[#5a6851]"
+              className="mt-1 flex items-center gap-1 text-[10px] sm:text-xs font-bold uppercase tracking-[0.16em] sm:tracking-[0.24em] text-[#75806b] transition-colors hover:text-[#5a6851]"
             >
               {expanded ? 'Ver menos' : `Ver todo (${categoryData.length})`}
               <ChevronRight size={11} className={cn('transition-transform', expanded && 'rotate-90')} />

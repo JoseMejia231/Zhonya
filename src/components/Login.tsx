@@ -165,29 +165,18 @@ export const Login: React.FC = () => {
 
   return (
     <main className="relative min-h-dvh w-full overflow-hidden lg:h-dvh lg:min-h-0 font-sans text-[#202D1E] bg-[#F0EDE4]">
-      {/* Desktop split background */}
-      <div 
-        className="absolute inset-0 hidden lg:block z-0"
-        style={{
-          background:
-            'radial-gradient(circle at 18% 18%, rgba(94,115,86,0.12), transparent 28%), radial-gradient(circle at 52% 64%, rgba(204,199,168,0.20), transparent 30%), linear-gradient(90deg, #F0EDE4 0%, #F3F0E8 60%, #E8E4D9 60%, #E8E4D9 100%)',
-        }}
-      />
-      {/* Mobile uniform background */}
-      <div 
-        className="absolute inset-0 lg:hidden z-0"
-        style={{
-          background:
-            'radial-gradient(circle at 50% 50%, rgba(94,115,86,0.12), transparent 70%)',
-        }}
-      />
-
       <div className="relative z-10 flex min-h-dvh w-full flex-col lg:h-full lg:min-h-0 lg:flex-row">
-        {/* Decorative Graphic Section (Hidden on mobile) */}
-        <section className="relative hidden lg:flex min-h-[360px] flex-1 flex-col justify-between overflow-hidden px-6 py-7 sm:px-10 lg:min-h-0 lg:px-[clamp(36px,4.5vw,64px)] lg:py-9">
+        
+        {/* Left Panel (Graphic Section) - Full Page Column on Desktop */}
+        <section 
+          className="relative hidden lg:flex flex-col justify-between overflow-hidden px-10 py-9 lg:w-[50%] lg:h-full"
+          style={{ background: palette.side }}
+        >
+          {/* Decorative blurs */}
           <div className="pointer-events-none absolute left-[8%] top-[19%] h-[32dvh] w-[32dvh] rounded-full bg-[#CCC7A8]/18 blur-3xl" />
           <div className="pointer-events-none absolute bottom-[12%] right-[6%] h-[40dvh] w-[40dvh] rounded-full bg-[#5E7356]/10 blur-3xl" />
 
+          {/* Logo */}
           <div className="relative z-30 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#3C4A34]/10 bg-white/55 shadow-sm backdrop-blur-sm">
               <MonaMark size={23} />
@@ -195,20 +184,24 @@ export const Login: React.FC = () => {
             <span className="text-[14px] font-extrabold uppercase tracking-[0.16em] text-[#202D1E]">MONA</span>
           </div>
 
-          <div className="relative z-10 flex flex-1 items-center justify-center py-8 lg:py-0">
-            <div className="relative aspect-square w-[min(84vw,500px)] sm:w-[min(74vw,540px)] lg:w-[min(48vw,76dvh,540px)] lg:translate-x-[1%]">
+          {/* Illustration (Centered and Straightened) */}
+          <div className="relative z-10 flex flex-1 items-center justify-center">
+            <div className="relative aspect-square w-[min(48vw,72dvh,520px)]">
               <div className="absolute inset-[-7%] rounded-full border border-[#B8B19E]/55" />
               <div className="absolute -left-[8%] bottom-[10%] h-[31%] w-[31%] rounded-[34%] bg-[#5E7356] opacity-90" />
               <div className="absolute right-[-3%] top-[18%] h-[32%] w-[32%] rounded-full bg-[#CBD4C0]/55 blur-[1px]" />
 
+              {/* Straightened Background Squares (no rotate-45!) */}
               <div
-                className="absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-[54%] -translate-y-[46%] rotate-45 rounded-[10px] opacity-80"
+                className="absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-[54%] -translate-y-[46%] rounded-[24px] opacity-80"
                 style={{ background: palette.moss }}
               />
               <div
-                className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-[46%] -translate-y-[54%] rotate-45 rounded-[10px] opacity-90"
+                className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-[46%] -translate-y-[54%] rounded-[24px] opacity-90"
                 style={{ background: palette.sand }}
               />
+
+              {/* Monkey Circle */}
               <div className="absolute left-1/2 top-1/2 z-10 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_16px_36px_rgba(32,45,30,0.08)]">
                 <img
                   src="/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg"
@@ -221,6 +214,7 @@ export const Login: React.FC = () => {
                 />
               </div>
 
+              {/* Floating Badges */}
               <div className="absolute left-[-2%] top-[10%] z-20 flex h-[30%] w-[30%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/70 text-center backdrop-blur-md">
                 <span className="mb-2 text-[clamp(7px,1.2vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
                   Seguridad<br />de elite
@@ -249,6 +243,7 @@ export const Login: React.FC = () => {
             </div>
           </div>
 
+          {/* Footer Text */}
           <div className="relative z-30 flex items-center justify-between text-[8px] font-black uppercase tracking-[0.25em] text-[#202D1E]/65 sm:text-[9px]">
             <span>Cifrado E2E</span>
             <span className="flex items-center gap-2">
@@ -258,38 +253,62 @@ export const Login: React.FC = () => {
           </div>
         </section>
 
-        {/* Login Form Section */}
-        <aside className="relative flex min-h-dvh w-full shrink-0 items-center justify-center px-5 py-6 lg:h-full lg:min-h-0 lg:w-[clamp(440px,36vw,540px)] lg:px-10">
-          <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[var(--color-brand)]/8 blur-3xl lg:block" />
-          <div
-            className="relative w-full max-w-[335px] mx-auto rounded-[22px] px-7 py-7 sm:max-w-[360px] sm:px-9 sm:py-8 lg:px-9 lg:py-9"
-            style={{
-              background: palette.card,
-              boxShadow: '0 24px 52px -22px rgba(32,45,30,0.22)',
-              border: '1px solid rgba(255,255,255,0.58)',
-            }}
-          >
-            <div className="mb-6 flex items-center gap-3 lg:hidden">
+        {/* Right Panel (Form Section) - Full Page Column on Desktop */}
+        <aside 
+          className="relative flex flex-1 flex-col justify-center items-center px-6 py-10 sm:px-12 lg:px-16 lg:w-[50%] lg:h-full overflow-y-auto"
+          style={{ background: palette.card }}
+        >
+          <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[#324B2C]/5 blur-3xl lg:block" />
+
+          {/* Mobile Header (Shows monkey and logo) */}
+          <div className="w-full max-w-[360px] mb-6 flex flex-col items-center lg:hidden">
+            <div className="flex items-center gap-3 mb-6">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#3C4A34]/10 bg-white/60 shadow-sm">
                 <MonaMark size={23} />
               </div>
-              <span className="text-[12px] font-extrabold uppercase tracking-[0.18em] text-[#202D1E]">MONA</span>
+              <span className="text-[14px] font-extrabold uppercase tracking-[0.18em] text-[#202D1E]">MONA</span>
             </div>
+            
+            {/* Small Monkey Illustration on Mobile */}
+            <div className="relative aspect-square w-[150px] mb-6">
+              <div className="absolute inset-[-7%] rounded-full border border-[#B8B19E]/55" />
+              <div className="absolute -left-[8%] bottom-[10%] h-[31%] w-[31%] rounded-[34%] bg-[#5E7356] opacity-90" />
+              <div className="absolute right-[-3%] top-[18%] h-[32%] w-[32%] rounded-full bg-[#CBD4C0]/55 blur-[1px]" />
+              <div
+                className="absolute left-1/2 top-1/2 h-[80%] w-[80%] -translate-x-[54%] -translate-y-[46%] rounded-[12px] opacity-80"
+                style={{ background: palette.moss }}
+              />
+              <div
+                className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-[46%] -translate-y-[54%] rounded-[12px] opacity-90"
+                style={{ background: palette.sand }}
+              />
+              <div className="absolute left-1/2 top-1/2 z-10 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_8px_20px_rgba(32,45,30,0.08)]">
+                <img
+                  src="/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg"
+                  alt="Mona"
+                  className="h-full w-full object-cover mix-blend-multiply"
+                  style={{ objectPosition: 'center center' }}
+                />
+              </div>
+            </div>
+          </div>
 
-            <h1 className="mb-1 text-[22px] font-extrabold leading-tight tracking-[-0.035em] text-[#202D1E] sm:text-[24px]">
+          {/* Form Content container */}
+          <div className="w-full max-w-[360px] mx-auto">
+            <h1 className="mb-1 text-[24px] sm:text-[28px] font-extrabold leading-tight tracking-[-0.035em] text-[#202D1E]">
               {mode === 'signin' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
             </h1>
-            <p className="mb-6 text-[11px] font-medium text-[#202D1E]/60 sm:mb-7">
-              {mode === 'signin' ? 'Accede a tu panel financiero MONA.' : '\u00danete a tu nuevo centro financiero.'}
+            <p className="mb-6 sm:mb-8 text-[11px] sm:text-[12px] font-medium text-[#202D1E]/60">
+              {mode === 'signin' ? 'Accede a tu panel financiero MONA.' : 'Únete a tu nuevo centro financiero.'}
             </p>
 
-            <div className="mb-6 flex gap-2 rounded-xl border border-[#202D1E]/10 bg-white/25 p-1 sm:mb-7">
+            <div className="mb-6 sm:mb-8 flex gap-2 rounded-xl border border-[#202D1E]/10 bg-white/25 p-1">
               {(['signin', 'signup'] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => switchMode(m)}
-                  className="relative flex-1 overflow-hidden rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-colors"
+                  className="relative flex-1 overflow-hidden rounded-lg px-3 py-2 text-[9.5px] font-black uppercase tracking-[0.16em] transition-colors"
                   style={{ color: mode === m ? palette.ink : 'rgba(32,45,30,0.38)' }}
                 >
                   {mode === m && (
@@ -324,7 +343,7 @@ export const Login: React.FC = () => {
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Jane Doe"
                         autoComplete="name"
-                        className="w-full bg-transparent pl-7 pr-3 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
+                        className="w-full bg-transparent pl-7 pr-3 text-[12.5px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                         style={{ caretColor: palette.green }}
                       />
                     </div>
@@ -333,7 +352,7 @@ export const Login: React.FC = () => {
               </AnimatePresence>
 
               <div>
-                <FieldLabel htmlFor="login-email">{'Correo electr\u00f3nico'}</FieldLabel>
+                <FieldLabel htmlFor="login-email">{'Correo electrónico'}</FieldLabel>
                 <div className="relative border-b border-[#202D1E]/15 pb-2 transition-colors focus-within:border-[#324B2C]">
                   <Mail className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
@@ -344,14 +363,14 @@ export const Login: React.FC = () => {
                     placeholder="tu@correo.com"
                     autoComplete="email"
                     required
-                    className="w-full bg-transparent pl-7 pr-3 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
+                    className="w-full bg-transparent pl-7 pr-3 text-[12.5px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                     style={{ caretColor: palette.green }}
                   />
                 </div>
               </div>
 
               <div>
-                <FieldLabel htmlFor="login-password">{'Contrase\u00f1a'}</FieldLabel>
+                <FieldLabel htmlFor="login-password">{'Contraseña'}</FieldLabel>
                 <div className="relative border-b border-[#202D1E]/15 pb-2 transition-colors focus-within:border-[#324B2C]">
                   <Lock className="absolute left-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42" size={15} strokeWidth={2} />
                   <input
@@ -363,14 +382,14 @@ export const Login: React.FC = () => {
                     autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                     minLength={mode === 'signup' ? 6 : undefined}
                     required
-                    className="w-full bg-transparent pl-7 pr-8 text-[12px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
+                    className="w-full bg-transparent pl-7 pr-8 text-[12.5px] font-semibold text-[#202D1E] outline-none placeholder:text-[#202D1E]/45"
                     style={{ caretColor: palette.green }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
                     className="absolute right-0 top-1/2 -translate-y-1/2 text-[#202D1E]/42 transition-colors hover:text-[#202D1E]"
-                    aria-label={showPassword ? 'Ocultar contrase\u00f1a' : 'Mostrar contrase\u00f1a'}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                   >
                     {showPassword ? <EyeOff size={15} strokeWidth={2} /> : <Eye size={15} strokeWidth={2} />}
                   </button>
@@ -380,9 +399,9 @@ export const Login: React.FC = () => {
                     type="button"
                     onClick={handlePasswordReset}
                     disabled={busy}
-                    className="mt-2 text-[9px] font-black uppercase tracking-[0.16em] text-[#324B2C]/70 transition-colors hover:text-[#324B2C] disabled:opacity-50"
+                    className="mt-2 text-[9.5px] font-black uppercase tracking-[0.16em] text-[#324B2C]/70 transition-colors hover:text-[#324B2C] disabled:opacity-50"
                   >
-                    {resetLoading ? 'Enviando...' : 'Olvid\u00e9 mi contrase\u00f1a'}
+                    {resetLoading ? 'Enviando...' : 'Olvidé mi contraseña'}
                   </button>
                 )}
               </div>
