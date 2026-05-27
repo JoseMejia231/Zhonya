@@ -338,8 +338,8 @@ export const RecurringExpenses: React.FC = () => {
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.2 }}
               className={cn(
-                'rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 shadow-sm',
-                !r.enabled && 'opacity-80'
+                'rounded-[24px] border border-zinc-200/70 bg-white/70 glass-surface premium-shadow p-5 transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5',
+                !r.enabled && 'opacity-75'
               )}
             >
               <div className="flex items-start gap-3">

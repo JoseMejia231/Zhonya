@@ -119,129 +119,173 @@ export const Wheels: React.FC = () => {
   const [draft, setDraft] = useState<SheetDraft | null>(null);
   const [picking, setPicking] = useState(false);
   const [spinningId, setSpinningId] = useState<string | null>(null);
+  const [deletingWheelId, setDeletingWheelId] = useState<string | null>(null);
   const spinningWheel = useMemo(
     () => wheels.find((w) => w.id === spinningId) ?? null,
     [wheels, spinningId]
   );
 
+  const confirmDeleteWheel = async (id: string) => {
+    await deleteWheel(id);
+    setDeletingWheelId(null);
+  };
+
   return (
-    <div className="space-y-4">
-      <header className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm p-5 flex items-start justify-between gap-3">
+    <div className="space-y-5">
+      <header className="rounded-[32px] border border-zinc-200/70 bg-white/70 glass-surface premium-shadow p-6 sm:p-7 flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9d9687]/70 mb-1">
             Ruletas
-          </h2>
-          <p className="text-sm font-semibold text-zinc-900 mt-0.5">
+          </p>
+          <h2 className="text-base font-bold tracking-tight text-emerald-900">
             {wheels.length === 0
               ? 'Crea tu primera ruleta'
               : `${wheels.length} ${wheels.length === 1 ? 'ruleta' : 'ruletas'}`}
-          </p>
-          <p className="text-[11px] text-zinc-500 leading-relaxed mt-1 max-w-[280px]">
+          </h2>
+          <p className="text-[11px] text-zinc-500 leading-relaxed mt-1.5 max-w-[280px]">
             Decisiones, ahorro, caprichos o hábitos — gira y deja que el azar elija.
           </p>
         </div>
         <button
           onClick={() => setPicking(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--color-action)] text-white text-xs font-bold uppercase tracking-[0.18em] hover:bg-[var(--color-action-hover)] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action)]/30 active:scale-95 shadow-[0_8px_20px_rgba(45,90,39,0.18)]"
         >
-          <Plus size={14} />
+          <Plus size={14} strokeWidth={2.5} />
           Crear
         </button>
       </header>
 
       {wheels.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm p-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-zinc-50 mb-3">
-            <Disc3 className="text-zinc-300" size={26} />
+        <div className="rounded-[28px] border border-dashed border-[#e4dccd] bg-white/40 p-10 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#f6f1e8] text-[#9d9687] mb-4 border border-[#efeadd]">
+            <Disc3 size={28} strokeWidth={1.75} />
           </div>
-          <p className="text-sm font-semibold text-zinc-900">Sin ruletas creadas</p>
-          <p className="text-xs text-zinc-500 mt-1 max-w-[280px] mx-auto leading-relaxed">
+          <p className="text-base font-bold text-emerald-900 tracking-tight">
+            Sin ruletas creadas
+          </p>
+          <p className="text-sm text-zinc-500 mt-1.5 max-w-[280px] mx-auto leading-relaxed">
             Toca "Crear" y elige una plantilla, o arma una desde cero.
           </p>
         </div>
       ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <AnimatePresence initial={false}>
-            {wheels.map((w) => (
-              <motion.li
-                key={w.id}
-                layout
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -16 }}
-                transition={{ duration: 0.2 }}
-                className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden flex flex-col"
-              >
-                <button
-                  onClick={() => {
-                    tap();
-                    setSpinningId(w.id);
-                  }}
-                  className="text-left p-5 hover:bg-zinc-50 active:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:bg-zinc-50 flex-1"
+            {wheels.map((w) => {
+              const isDeleting = deletingWheelId === w.id;
+              return (
+                <motion.li
+                  key={w.id}
+                  layout
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative rounded-[28px] border border-zinc-200/70 bg-white/70 glass-surface premium-shadow overflow-hidden flex flex-col transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={cn(
-                        'inline-flex items-center justify-center w-8 h-8 rounded-xl',
-                        w.mode === 'transaction'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-zinc-100 text-zinc-700'
-                      )}
-                    >
-                      <Disc3 size={16} />
-                    </div>
-                    <h3 className="text-sm font-semibold text-zinc-900 truncate flex-1">
-                      {w.title}
-                    </h3>
-                    <span
-                      className={cn(
-                        'text-[10px] px-1.5 py-0.5 rounded-md font-medium',
-                        w.mode === 'transaction'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-zinc-100 text-zinc-600'
-                      )}
-                    >
-                      {w.mode === 'transaction'
-                        ? w.txType === 'income'
-                          ? 'Ingreso'
-                          : 'Gasto'
-                        : 'Decisión'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-500">
-                    {w.slices.length} casillas · toca para girar
-                  </p>
-                </button>
-                <div className="flex items-center gap-1 px-3 pb-3">
-                  <button
-                    onClick={() =>
-                      setDraft({
-                        id: w.id,
-                        title: w.title,
-                        mode: w.mode,
-                        txType: w.txType,
-                        slices: w.slices,
-                      })
-                    }
-                    aria-label="Editar"
-                    className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30"
-                  >
-                    <Pencil size={15} />
-                  </button>
                   <button
                     onClick={() => {
-                      if (window.confirm(`¿Eliminar la ruleta "${w.title}"?`)) {
-                        deleteWheel(w.id);
-                      }
+                      tap();
+                      setSpinningId(w.id);
                     }}
-                    aria-label="Eliminar"
-                    className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30"
+                    className="text-left p-5 sm:p-6 hover:bg-[#f6f1e8]/30 active:bg-[#f6f1e8]/50 transition-colors cursor-pointer focus:outline-none focus-visible:bg-[#f6f1e8]/40 flex-1"
                   >
-                    <Trash2 size={15} />
+                    <div className="flex items-center gap-2.5 mb-2.5">
+                      <div
+                        className={cn(
+                          'inline-flex items-center justify-center w-9 h-9 rounded-xl',
+                          w.mode === 'transaction'
+                            ? 'bg-emerald-50 text-[var(--color-action)]'
+                            : 'bg-[#f6f1e8] text-[var(--color-brand)]'
+                        )}
+                      >
+                        <Disc3 size={17} strokeWidth={2} />
+                      </div>
+                      <h3 className="text-sm font-bold text-zinc-900 truncate flex-1 tracking-tight">
+                        {w.title}
+                      </h3>
+                      <span
+                        className={cn(
+                          'text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider',
+                          w.mode === 'transaction'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-[#f6f1e8] text-[var(--color-brand)]'
+                        )}
+                      >
+                        {w.mode === 'transaction'
+                          ? w.txType === 'income'
+                            ? 'Ingreso'
+                            : 'Gasto'
+                          : 'Decisión'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-500">
+                      {w.slices.length} casillas · toca para girar
+                    </p>
                   </button>
-                </div>
-              </motion.li>
-            ))}
+                  <div className="flex items-center gap-1 px-3 pb-3">
+                    <button
+                      onClick={() =>
+                        setDraft({
+                          id: w.id,
+                          title: w.title,
+                          mode: w.mode,
+                          txType: w.txType,
+                          slices: w.slices,
+                        })
+                      }
+                      aria-label="Editar"
+                      className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-zinc-700 hover:text-[var(--color-action)] hover:bg-emerald-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action)]/30 active:scale-95"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => setDeletingWheelId(w.id)}
+                      aria-label="Eliminar"
+                      className="inline-flex items-center justify-center min-w-[40px] min-h-[40px] rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500/30 active:scale-95"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+
+                  <AnimatePresence>
+                    {isDeleting && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm rounded-[28px] p-6 text-center"
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-3">
+                          <Trash2 size={20} strokeWidth={2} />
+                        </div>
+                        <h4 className="text-[15px] font-bold text-zinc-900 mb-1">
+                          ¿Eliminar esta ruleta?
+                        </h4>
+                        <p className="text-xs text-zinc-500 max-w-[260px] leading-relaxed mb-5">
+                          Se borrará <span className="font-semibold text-zinc-700">{w.title}</span>.
+                          Las transacciones generadas por giros pasados se conservan.
+                        </p>
+                        <div className="flex gap-2 w-full max-w-[260px]">
+                          <button
+                            onClick={() => setDeletingWheelId(null)}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors active:scale-95"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => confirmDeleteWheel(w.id)}
+                            className="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.li>
+              );
+            })}
           </AnimatePresence>
         </ul>
       )}

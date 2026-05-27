@@ -260,7 +260,7 @@ export const Login: React.FC = () => {
 
         {/* Login Form Section */}
         <aside className="relative flex min-h-dvh w-full shrink-0 items-center justify-center px-5 py-6 lg:h-full lg:min-h-0 lg:w-[clamp(440px,36vw,540px)] lg:px-10">
-          <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[#836637]/8 blur-3xl lg:block" />
+          <div className="pointer-events-none absolute right-[4%] top-[18%] hidden h-[38dvh] w-[38dvh] rounded-full bg-[var(--color-brand)]/8 blur-3xl lg:block" />
           <div
             className="relative w-full max-w-[335px] mx-auto rounded-[22px] px-7 py-7 sm:max-w-[360px] sm:px-9 sm:py-8 lg:px-9 lg:py-9"
             style={{

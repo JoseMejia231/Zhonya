@@ -97,4 +97,10 @@ export interface SavingsGoal {
   deadline?: string; // ISO
   /** Periodicidad con la que se evalúa la racha de aportes. Default 'monthly'. */
   streakCadence?: StreakCadence;
+  /**
+   * Monto que el usuario se compromete a aportar en cada periodo de la cadencia.
+   * Si está definido, la racha solo cuenta periodos donde el aporte total
+   * iguala o supera este monto. Si es undefined o 0, cualquier aporte cuenta.
+   */
+  commitmentAmount?: number;
 }

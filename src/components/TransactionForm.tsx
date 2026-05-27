@@ -199,11 +199,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
   return (
     <div className="bg-white p-5 sm:p-7 rounded-[32px] border border-zinc-200/60 shadow-sm relative overflow-hidden transition-all duration-300">
       {/* Decorative Warm Accent Header background element */}
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[#836637] to-transparent opacity-60" />
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[var(--color-brand)] to-transparent opacity-60" />
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#836637] dark:text-[#D4B15E]">Registrar</h2>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-brand)] dark:text-[var(--color-brand)]">Registrar</h2>
           <p className="text-base font-extrabold text-zinc-900 dark:text-white uppercase tracking-tighter mt-0.5">Nueva Entrada</p>
         </div>
         {onClose && (
@@ -228,7 +228,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
             onClick={() => handleTypeChange('income')}
             className={cn(
               'relative flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold uppercase tracking-wider z-10 transition-colors cursor-pointer',
-              type === 'income' ? 'text-emerald-700 dark:text-[#52C447]' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+              type === 'income' ? 'text-emerald-700 dark:text-[var(--color-action)]' : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
             )}
           >
             <Plus size={14} strokeWidth={2.5} />
@@ -270,7 +270,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
           <label htmlFor="tx-amount" className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400 ml-1">
             Monto
           </label>
-          <div className="flex items-stretch overflow-visible rounded-2xl border border-zinc-200/80 bg-zinc-50 transition-all duration-300 focus-within:border-[#836637] dark:focus-within:border-[#D4B15E] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#836637]/5 dark:focus-within:ring-[#D4B15E]/5">
+          <div className="flex items-stretch overflow-visible rounded-2xl border border-zinc-200/80 bg-zinc-50 transition-all duration-300 focus-within:border-[var(--color-brand)] dark:focus-within:border-[var(--color-brand)] focus-within:bg-white focus-within:ring-4 focus-within:ring-[var(--color-brand)]/5 dark:focus-within:ring-[var(--color-brand)]/5">
             {/* Custom Currency Dropdown */}
             <div ref={currencyRef} className="relative flex shrink-0 items-center border-r border-zinc-200/80">
               <button
@@ -309,14 +309,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                           className={cn(
                             'w-full flex items-center justify-between px-4 py-3 text-left transition-all cursor-pointer',
                             isActive
-                              ? 'bg-[#836637]/5'
+                              ? 'bg-[var(--color-brand)]/5'
                               : 'hover:bg-zinc-50'
                           )}
                         >
                           <div className="flex items-center gap-2.5">
                             <span className={cn(
                               'text-xs font-bold num',
-                              isActive ? 'text-[#836637] dark:text-[#D4B15E]' : 'text-zinc-800'
+                              isActive ? 'text-[var(--color-brand)] dark:text-[var(--color-brand)]' : 'text-zinc-800'
                             )}>
                               {c}
                             </span>
@@ -326,7 +326,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                             <motion.span
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
-                              className="text-[#836637] dark:text-[#D4B15E]"
+                              className="text-[var(--color-brand)] dark:text-[var(--color-brand)]"
                             >
                               <Check size={12} strokeWidth={3} />
                             </motion.span>
@@ -365,7 +365,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                   const prev = Number(amount) || 0;
                   setAmount(String(prev + val));
                 }}
-                className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest rounded-xl bg-zinc-100/75 border border-zinc-200/60 text-[#836637] dark:text-[#D4B15E] hover:bg-zinc-200/50 hover:border-zinc-300 active:scale-95 transition-all cursor-pointer shadow-sm"
+                className="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest rounded-xl bg-zinc-100/75 border border-zinc-200/60 text-[var(--color-brand)] dark:text-[var(--color-brand)] hover:bg-zinc-200/50 hover:border-zinc-300 active:scale-95 transition-all cursor-pointer shadow-sm"
               >
                 +{val}
               </button>
@@ -389,7 +389,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                   className={cn(
                     'px-4 py-2.5 rounded-2xl text-xs font-bold border transition-all duration-300 flex items-center gap-1.5 cursor-pointer relative overflow-hidden',
                     active
-                      ? 'border-[#836637] text-[#836637] dark:border-[#D4B15E] dark:text-[#D4B15E] bg-[#836637]/5 dark:bg-[#D4B15E]/10 shadow-[0_4px_16px_rgba(131,102,55,0.08)] dark:shadow-[0_4px_16px_rgba(212,177,94,0.12)]'
+                      ? 'border-[var(--color-brand)] text-[var(--color-brand)] dark:border-[var(--color-brand)] dark:text-[var(--color-brand)] bg-[var(--color-brand)]/5 dark:bg-[var(--color-brand)]/10 shadow-[0_4px_16px_rgba(131,102,55,0.08)] dark:shadow-[0_4px_16px_rgba(212,177,94,0.12)]'
                       : 'bg-zinc-50/50 text-zinc-500 border-zinc-200 hover:border-zinc-300 hover:text-zinc-700 dark:hover:text-zinc-200'
                   )}
                 >
@@ -399,7 +399,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0, opacity: 0 }}
-                        className="text-[#836637] dark:text-[#D4B15E]"
+                        className="text-[var(--color-brand)] dark:text-[var(--color-brand)]"
                       >
                         <Check size={12} strokeWidth={3} />
                       </motion.span>
@@ -432,13 +432,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                     }}
                     placeholder="Nombre..."
                     maxLength={30}
-                    className="w-[120px] px-3 py-2 text-xs font-semibold rounded-xl border border-[#836637]/30 bg-white focus:outline-none focus:border-[#836637] focus:ring-2 focus:ring-[#836637]/10 transition-all"
+                    className="w-[120px] px-3 py-2 text-xs font-semibold rounded-xl border border-[var(--color-brand)]/30 bg-white focus:outline-none focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand)]/10 transition-all"
                   />
                   <button
                     type="button"
                     onClick={handleAddCategory}
                     disabled={!newCatName.trim()}
-                    className="px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl bg-[#836637] text-white hover:bg-[#6d5530] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
+                    className="px-3 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer active:scale-95"
                   >
                     Agregar
                   </button>
@@ -458,7 +458,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                   exit={{ opacity: 0 }}
                   type="button"
                   onClick={() => setShowNewCatInput(true)}
-                  className="px-4 py-2.5 rounded-2xl text-xs font-bold border border-dashed border-zinc-300 text-zinc-400 hover:border-[#836637] hover:text-[#836637] dark:hover:border-[#D4B15E] dark:hover:text-[#D4B15E] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-4 py-2.5 rounded-2xl text-xs font-bold border border-dashed border-zinc-300 text-zinc-400 hover:border-[var(--color-brand)] hover:text-[var(--color-brand)] dark:hover:border-[var(--color-brand)] dark:hover:text-[var(--color-brand)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
                   <Plus size={12} strokeWidth={2.5} />
                   Nueva
@@ -471,7 +471,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
         {/* Goal selector if category is Metas */}
         {category === 'Metas' && savingsGoals.length > 0 && (
           <div className="animate-in fade-in slide-in-from-top-3 duration-300 space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600 dark:text-[#52C447] ml-1 block">
+            <label className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-600 dark:text-[var(--color-action)] ml-1 block">
               Destino de la Meta
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
@@ -486,7 +486,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                     className={cn(
                       "p-3.5 rounded-2xl border text-left transition-all duration-355 cursor-pointer flex flex-col justify-between h-[84px] relative overflow-hidden bg-white",
                       isSelected
-                        ? "border-emerald-500 bg-emerald-50/20 dark:border-[#52C447] dark:bg-[#52C447]/10 shadow-[0_4px_16px_rgba(16,185,129,0.06)]"
+                        ? "border-emerald-500 bg-emerald-50/20 dark:border-[var(--color-action)] dark:bg-[var(--color-action)]/10 shadow-[0_4px_16px_rgba(16,185,129,0.06)]"
                         : "border-zinc-200 hover:border-zinc-300"
                     )}
                   >
@@ -494,7 +494,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                       <span className={cn("text-xs font-black truncate uppercase tracking-tight", isSelected ? "text-emerald-950 dark:text-[#A7F3D0]" : "text-zinc-700")}>
                         {g.title}
                       </span>
-                      {isSelected && <Check size={12} className="text-emerald-600 dark:text-[#52C447] shrink-0" strokeWidth={3} />}
+                      {isSelected && <Check size={12} className="text-emerald-600 dark:text-[var(--color-action)] shrink-0" strokeWidth={3} />}
                     </div>
                     
                     <div className="w-full">
@@ -504,7 +504,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                       </div>
                       <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
                         <div 
-                          className={cn("h-full rounded-full transition-all duration-500", isSelected ? "bg-emerald-500 dark:bg-[#52C447]" : "bg-zinc-300")}
+                          className={cn("h-full rounded-full transition-all duration-500", isSelected ? "bg-emerald-500 dark:bg-[var(--color-action)]" : "bg-zinc-300")}
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -547,7 +547,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-white pl-9 pr-3 py-2.5 border border-zinc-200/60 rounded-xl focus:outline-none focus:border-[#836637] dark:focus:border-[#D4B15E] focus:ring-4 focus:ring-[#836637]/5 dark:focus:ring-[#D4B15E]/5 transition-all text-xs font-semibold num cursor-pointer"
+                className="w-full bg-white pl-9 pr-3 py-2.5 border border-zinc-200/60 rounded-xl focus:outline-none focus:border-[var(--color-brand)] dark:focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand)]/5 dark:focus:ring-[var(--color-brand)]/5 transition-all text-xs font-semibold num cursor-pointer"
               />
             </div>
           </div>
@@ -565,7 +565,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Descripción (opcional)"
                 maxLength={60}
-                className="w-full bg-white pl-9 pr-3 py-2.5 border border-zinc-200/60 rounded-xl focus:outline-none focus:border-[#836637] dark:focus:border-[#D4B15E] focus:ring-4 focus:ring-[#836637]/5 dark:focus:ring-[#D4B15E]/5 transition-all text-xs font-semibold"
+                className="w-full bg-white pl-9 pr-3 py-2.5 border border-zinc-200/60 rounded-xl focus:outline-none focus:border-[var(--color-brand)] dark:focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand)]/5 dark:focus:ring-[var(--color-brand)]/5 transition-all text-xs font-semibold"
               />
             </div>
           </div>
@@ -577,7 +577,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
           className={cn(
             'w-full py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 cursor-pointer flex items-center justify-center gap-2.5',
             justSaved
-              ? 'bg-emerald-600 dark:bg-[#52C447] text-white shadow-emerald-500/20 focus:ring-emerald-500'
+              ? 'bg-emerald-600 dark:bg-[var(--color-action)] text-white shadow-emerald-500/20 focus:ring-emerald-500'
               : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-zinc-950/10 focus:ring-zinc-900 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100'
           )}
         >

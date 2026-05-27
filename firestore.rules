@@ -155,7 +155,7 @@ service cloud.firestore {
 
     function isValidSavingsGoal(data) {
       return hasRequiredFields(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
-             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline', 'currency', 'streakCadence']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline', 'currency', 'streakCadence', 'commitmentAmount']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.uid == request.auth.uid &&
              data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
@@ -164,7 +164,8 @@ service cloud.firestore {
              isValidDateString(data.createdAt) &&
              (!('deadline' in data) || isValidDateString(data.deadline)) &&
              (!('currency' in data) || (data.currency is string && data.currency.size() > 0 && data.currency.size() < 10)) &&
-             (!('streakCadence' in data) || data.streakCadence in ['weekly', 'biweekly', 'monthly']);
+             (!('streakCadence' in data) || data.streakCadence in ['weekly', 'biweekly', 'monthly']) &&
+             (!('commitmentAmount' in data) || (data.commitmentAmount is number && data.commitmentAmount >= 0));
     }
 
     // ===============================================================

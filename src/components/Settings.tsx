@@ -193,8 +193,8 @@ export const Settings: React.FC = () => {
               {activeSection === 'support' && 'Centro de Ayuda'}
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-             <div className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+             <div className="hidden sm:inline-flex px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full text-[9px] font-black uppercase tracking-widest border border-emerald-100">
                 Sistema Operativo
              </div>
              <div className="w-10 h-10 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-black text-xs shadow-lg">

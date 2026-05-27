@@ -105,7 +105,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md z-50 bg-white rounded-3xl shadow-2xl shadow-black/20 border border-zinc-200/70 overflow-hidden max-h-[85vh] flex flex-col"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92vw] max-w-md z-50 bg-white rounded-[32px] shadow-2xl shadow-black/20 border border-zinc-200/70 overflow-hidden max-h-[85vh] flex flex-col"
           >
             {/* Header */}
             <div className="flex flex-col border-b border-zinc-100">

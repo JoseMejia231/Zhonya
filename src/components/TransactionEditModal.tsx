@@ -61,6 +61,16 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
     }
   }, [transaction, isOpen, mode]);
 
+  // Cerrar con Escape — consistente con CategoryManager.
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [isOpen, onClose]);
+
   const incomeCats = settings.incomeCategories || settings.categories || [];
   const expenseCats = settings.expenseCategories || settings.categories || [];
   const activeCategories = type === 'income' ? incomeCats : expenseCats;
@@ -151,7 +161,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-3xl shadow-2xl z-50 overflow-hidden"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[32px] shadow-2xl z-50 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5 sm:p-6 max-h-[90vh] overflow-y-auto no-scrollbar">

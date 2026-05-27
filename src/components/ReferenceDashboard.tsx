@@ -345,14 +345,14 @@ export const ComparativeChart: React.FC<{ period?: AnalysisPeriod }> = ({ period
       transition={{ duration: 0.35, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
       className={cn(SURFACES.card, 'p-5 sm:p-6')}
     >
-      <div className="mb-7 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-          <h2 className="text-sm font-bold uppercase tracking-[0.3em] text-[#7c7361]/80">
+      <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] shrink-0" />
+          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.22em] sm:tracking-[0.3em] text-[#7c7361]/80 truncate">
             Análisis de flujo de capital
           </h2>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <LegendItem color="bg-[#2d5a27]" label="Entrada" />
           <LegendItem color="bg-[#dcd5c7]" label="Salida" />
         </div>

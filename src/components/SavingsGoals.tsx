@@ -1,6 +1,17 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { Target, Plus, Trash2, ChevronDown, Flame } from 'lucide-react';
+import {
+  Target,
+  Plus,
+  Trash2,
+  ChevronDown,
+  Flame,
+  Check,
+  X,
+  Sparkles,
+  Pencil,
+  TrendingUp,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, cn } from '../utils';
 import { CADENCE_LABELS, computeGoalStreak, type GoalStreak } from '../utils/streaks';
@@ -9,105 +20,346 @@ import type { SavingsGoal, StreakCadence } from '../types';
 const CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN'] as const;
 const CADENCE_OPTIONS: StreakCadence[] = ['weekly', 'biweekly', 'monthly'];
 
+/**
+ * Factores para llevar el compromiso a "por mes" en el resumen del header.
+ * Aproximación razonable: 4.33 semanas/mes (52/12), 2 quincenas/mes.
+ */
+const COMMITMENT_TO_MONTHLY: Record<StreakCadence, number> = {
+  weekly: 52 / 12,
+  biweekly: 2,
+  monthly: 1,
+};
+
 export const SavingsGoalsSection: React.FC = () => {
-  const { savingsGoals, upsertSavingsGoal, deleteSavingsGoal, settings, transactions, addTransaction } = useFinance();
-  const [isAdding, setIsAdding] = useState(false);
+  const {
+    savingsGoals,
+    upsertSavingsGoal,
+    deleteSavingsGoal,
+    settings,
+    transactions,
+    addTransaction,
+  } = useFinance();
+
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [title, setTitle] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('');
   const [currency, setCurrency] = useState(settings.currency || 'DOP');
   const [cadence, setCadence] = useState<StreakCadence>('monthly');
+  const [commitmentAmount, setCommitmentAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Mapa goalId → racha. Se recalcula cuando cambian transacciones o metas, no
-  // en cada keystroke del formulario. Respeta la cadencia configurada por meta.
+  // Estado por-card para inline UIs (Aportar / Confirmar borrado / Confirmar cadencia).
+  const [contributingGoalId, setContributingGoalId] = useState<string | null>(null);
+  const [contributionAmount, setContributionAmount] = useState('');
+  const [contributionError, setContributionError] = useState<string | null>(null);
+  const [contributing, setContributing] = useState(false);
+  const [deletingGoalId, setDeletingGoalId] = useState<string | null>(null);
+  const [pendingCadence, setPendingCadence] = useState<{
+    goalId: string;
+    next: StreakCadence;
+  } | null>(null);
+
+  // Mapa goalId → racha. Se recalcula cuando cambian transacciones o metas,
+  // no en cada keystroke del formulario. Respeta cadencia y compromiso.
   const streaksByGoal = useMemo(() => {
     const map = new Map<string, GoalStreak>();
     for (const g of savingsGoals) {
-      map.set(g.id, computeGoalStreak(transactions, g.id, g.streakCadence ?? 'monthly'));
+      map.set(
+        g.id,
+        computeGoalStreak(transactions, g.id, g.streakCadence ?? 'monthly', {
+          commitmentAmount: g.commitmentAmount,
+        })
+      );
     }
     return map;
   }, [transactions, savingsGoals]);
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !targetAmount) return;
-
-    const newGoalId = await upsertSavingsGoal({
-      title,
-      targetAmount: Number(targetAmount),
-      currentAmount: 0,
-      currency,
-      streakCadence: cadence,
-    });
-
-    // Si el usuario indicó un monto inicial, lo registramos como una transacción
-    // ligada al goal para que figure en el historial y la racha lo cuente.
-    if (newGoalId && Number(currentAmount) > 0) {
-      const now = new Date();
-      await addTransaction(
-        {
-          amount: Number(currentAmount),
-          type: 'expense',
-          category: 'Metas',
-          description: `Saldo inicial: ${title}`,
-          date: now.toISOString(),
-          currency,
-          goalId: newGoalId,
-        },
-        { syncGoalBalance: true }
+  // Resumen agregado del header: # metas activas, total acumulado por moneda,
+  // compromiso mensual total normalizado.
+  const aggregates = useMemo(() => {
+    const activeGoals = savingsGoals.filter(
+      (g) => g.currentAmount < g.targetAmount
+    );
+    const accumulatedByCurrency = new Map<string, number>();
+    for (const g of savingsGoals) {
+      const cur = g.currency || settings.currency || 'DOP';
+      accumulatedByCurrency.set(cur, (accumulatedByCurrency.get(cur) ?? 0) + g.currentAmount);
+    }
+    // El compromiso mensual normalizado solo tiene sentido cuando todas las metas
+    // activas con compromiso comparten moneda. Si hay mezcla, lo agrupamos por
+    // moneda para no sumar peras con manzanas.
+    const monthlyCommitmentByCurrency = new Map<string, number>();
+    for (const g of activeGoals) {
+      if (!g.commitmentAmount || g.commitmentAmount <= 0) continue;
+      const cur = g.currency || settings.currency || 'DOP';
+      const factor = COMMITMENT_TO_MONTHLY[g.streakCadence ?? 'monthly'];
+      monthlyCommitmentByCurrency.set(
+        cur,
+        (monthlyCommitmentByCurrency.get(cur) ?? 0) + g.commitmentAmount * factor
       );
     }
+    return {
+      activeCount: activeGoals.length,
+      totalCount: savingsGoals.length,
+      accumulatedByCurrency: [...accumulatedByCurrency.entries()],
+      monthlyCommitmentByCurrency: [...monthlyCommitmentByCurrency.entries()],
+    };
+  }, [savingsGoals, settings.currency]);
 
+  // Cuando arranca un edit, hidratamos el form con los valores existentes.
+  useEffect(() => {
+    if (!editingGoal) return;
+    setTitle(editingGoal.title);
+    setTargetAmount(String(editingGoal.targetAmount));
+    setCurrentAmount(String(editingGoal.currentAmount));
+    setCurrency(editingGoal.currency || settings.currency || 'DOP');
+    setCadence(editingGoal.streakCadence ?? 'monthly');
+    setCommitmentAmount(
+      editingGoal.commitmentAmount ? String(editingGoal.commitmentAmount) : ''
+    );
+    setFormError(null);
+  }, [editingGoal, settings.currency]);
+
+  const resetForm = () => {
     setTitle('');
     setTargetAmount('');
     setCurrentAmount('');
     setCadence('monthly');
-    setIsAdding(false);
+    setCommitmentAmount('');
+    setCurrency(settings.currency || 'DOP');
+    setFormError(null);
   };
 
-  const handleCadenceChange = (goal: SavingsGoal, next: StreakCadence) => {
-    upsertSavingsGoal({ ...goal, streakCadence: next });
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditingGoal(null);
+    resetForm();
   };
+
+  const openCreate = () => {
+    setEditingGoal(null);
+    resetForm();
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (goal: SavingsGoal) => {
+    setEditingGoal(goal);
+    setIsFormOpen(true);
+    // Cerramos otros estados expandidos para no confundir.
+    setContributingGoalId(null);
+    setDeletingGoalId(null);
+    setPendingCadence(null);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (submitting) return;
+    setFormError(null);
+
+    const trimmedTitle = title.trim();
+    const targetNum = Number(targetAmount);
+    const currentNum = Number(currentAmount || '0');
+    const commitmentNum = Number(commitmentAmount || '0');
+
+    if (!trimmedTitle) {
+      setFormError('El nombre de la meta es obligatorio.');
+      return;
+    }
+    if (!Number.isFinite(targetNum) || targetNum <= 0) {
+      setFormError('El monto objetivo debe ser mayor que 0.');
+      return;
+    }
+    if (!Number.isFinite(currentNum) || currentNum < 0) {
+      setFormError('El monto actual no puede ser negativo.');
+      return;
+    }
+    if (currentNum > targetNum) {
+      setFormError('El monto actual no puede superar el objetivo.');
+      return;
+    }
+    if (!Number.isFinite(commitmentNum) || commitmentNum < 0) {
+      setFormError('El compromiso no puede ser negativo.');
+      return;
+    }
+
+    setSubmitting(true);
+    const resultId = await upsertSavingsGoal({
+      ...(editingGoal ? { id: editingGoal.id } : {}),
+      title: trimmedTitle,
+      targetAmount: targetNum,
+      currentAmount: currentNum,
+      currency,
+      streakCadence: cadence,
+      ...(commitmentNum > 0 ? { commitmentAmount: commitmentNum } : {}),
+    });
+    setSubmitting(false);
+
+    if (!resultId) return;
+    closeForm();
+  };
+
+  const requestCadenceChange = (goal: SavingsGoal, next: StreakCadence) => {
+    if (next === (goal.streakCadence ?? 'monthly')) return;
+    if (goal.commitmentAmount && goal.commitmentAmount > 0) {
+      // Cambiar de mensual a semanal hace que $500 pase de ser "por mes" a "por
+      // semana": el compromiso se vuelve mucho más exigente sin que el usuario
+      // lo cambie. Pedimos confirmación para evitar romper rachas en silencio.
+      setPendingCadence({ goalId: goal.id, next });
+      return;
+    }
+    void upsertSavingsGoal({ ...goal, streakCadence: next });
+  };
+
+  const confirmCadenceChange = async () => {
+    if (!pendingCadence) return;
+    const goal = savingsGoals.find((g) => g.id === pendingCadence.goalId);
+    if (!goal) {
+      setPendingCadence(null);
+      return;
+    }
+    await upsertSavingsGoal({ ...goal, streakCadence: pendingCadence.next });
+    setPendingCadence(null);
+  };
+
+  const openContribute = (goalId: string) => {
+    setContributingGoalId(goalId);
+    setContributionAmount('');
+    setContributionError(null);
+    setDeletingGoalId(null);
+  };
+
+  const closeContribute = () => {
+    setContributingGoalId(null);
+    setContributionAmount('');
+    setContributionError(null);
+  };
+
+  const handleContribute = async (goal: SavingsGoal) => {
+    if (contributing) return;
+    setContributionError(null);
+    const amt = Number(contributionAmount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setContributionError('Indica un monto mayor que 0.');
+      return;
+    }
+    setContributing(true);
+    await addTransaction(
+      {
+        amount: amt,
+        type: 'expense',
+        category: 'Metas',
+        description: `Aporte: ${goal.title}`,
+        date: new Date().toISOString(),
+        currency: goal.currency || settings.currency,
+        goalId: goal.id,
+      },
+      { syncGoalBalance: true }
+    );
+    setContributing(false);
+    closeContribute();
+  };
+
+  const openDeleteConfirm = (goalId: string) => {
+    setDeletingGoalId(goalId);
+    setContributingGoalId(null);
+  };
+
+  const cancelDelete = () => setDeletingGoalId(null);
+
+  const confirmDelete = async (goalId: string) => {
+    await deleteSavingsGoal(goalId);
+    setDeletingGoalId(null);
+  };
+
+  const isEditing = editingGoal !== null;
+  const pendingCadenceMeta = pendingCadence
+    ? {
+        goal: savingsGoals.find((g) => g.id === pendingCadence.goalId),
+        next: pendingCadence.next,
+      }
+    : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-7">
+      <header className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-emerald-900">Metas de Ahorro</h2>
-          <p className="text-sm text-zinc-500 mt-1">Planifica tus próximos grandes objetivos.</p>
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#7c7361]/80 mb-2">
+            Objetivos de Ahorro
+          </p>
+          <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-emerald-900">
+            Tus metas activas
+          </h2>
+          <p className="text-sm text-zinc-500 mt-1.5">
+            Define a dónde va tu dinero y mantén la racha de aportes.
+          </p>
         </div>
         <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="inline-flex items-center gap-2 bg-[#2D5A27] text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#244920] transition-colors"
+          onClick={() => (isFormOpen ? closeForm() : openCreate())}
+          className={cn(
+            'inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] transition-all active:scale-95',
+            isFormOpen
+              ? 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-200'
+              : 'bg-[var(--color-action)] text-white hover:bg-[var(--color-action-hover)] shadow-[0_12px_24px_rgba(45,90,39,0.18)]'
+          )}
         >
-          {isAdding ? 'Cancelar' : <><Plus size={18} /> Nueva Meta</>}
+          {isFormOpen ? (
+            <>
+              <X size={14} strokeWidth={2.5} />
+              Cancelar
+            </>
+          ) : (
+            <>
+              <Plus size={14} strokeWidth={2.5} />
+              Nueva Meta
+            </>
+          )}
         </button>
-      </div>
+      </header>
+
+      {savingsGoals.length > 0 && <AggregatesStrip aggregates={aggregates} />}
 
       <AnimatePresence>
-        {isAdding && (
+        {isFormOpen && (
           <motion.form
+            key={isEditing ? `edit-${editingGoal!.id}` : 'create'}
             initial={{ opacity: 0, y: -10, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -10, height: 0 }}
-            className="bg-white p-6 rounded-2xl border border-zinc-200/60 shadow-sm overflow-hidden"
-            onSubmit={handleAdd}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-[28px] border border-zinc-200/70 bg-white/70 glass-surface premium-shadow p-6 sm:p-7 overflow-hidden"
+            onSubmit={handleSave}
           >
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9d9687] mb-1">
+                {isEditing ? 'Editar meta' : 'Nueva meta'}
+              </p>
+              <h3 className="text-lg font-bold tracking-tight text-emerald-900">
+                {isEditing ? editingGoal!.title : 'Define tu próximo objetivo'}
+              </h3>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Nombre de la Meta</label>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                  Nombre
+                </label>
                 <input
                   type="text"
                   required
                   value={title}
-                  onChange={e => setTitle(e.target.value)}
+                  onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ej. Viaje a Japón"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#2D5A27]"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--color-action)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Monto Objetivo</label>
-                <div className="flex items-stretch overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 focus-within:border-[#2D5A27] focus-within:ring-2 focus-within:ring-[#2D5A27]/20 transition-all">
+                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                  Monto objetivo
+                </label>
+                <div className="flex items-stretch overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 focus-within:border-[var(--color-action)] focus-within:ring-2 focus-within:ring-[var(--color-action)]/20 transition-all">
                   <div className="relative flex w-[5.5rem] shrink-0 items-center border-r border-zinc-200 bg-white/70">
                     <select
                       value={currency}
@@ -115,10 +367,15 @@ export const SavingsGoalsSection: React.FC = () => {
                       className="h-full w-full appearance-none bg-transparent pl-3 pr-6 py-2.5 text-sm font-medium uppercase tracking-tight text-zinc-900 focus:outline-none cursor-pointer"
                     >
                       {CURRENCIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ))}
                     </select>
-                    <ChevronDown size={14} className="absolute right-2 text-zinc-400 pointer-events-none" />
+                    <ChevronDown
+                      size={14}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+                    />
                   </div>
                   <input
                     type="number"
@@ -126,189 +383,842 @@ export const SavingsGoalsSection: React.FC = () => {
                     min="1"
                     step="any"
                     value={targetAmount}
-                    onChange={e => setTargetAmount(e.target.value)}
+                    onChange={(e) => setTargetAmount(e.target.value)}
                     placeholder="5000"
                     className="flex-1 w-full min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none num"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Monto Actual (Opcional)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                  {isEditing ? 'Acumulado actual' : 'Ya tienes (opcional)'}
+                </label>
                 <input
                   type="number"
                   min="0"
                   step="any"
                   value={currentAmount}
-                  onChange={e => setCurrentAmount(e.target.value)}
+                  onChange={(e) => setCurrentAmount(e.target.value)}
                   placeholder="0"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#2D5A27]"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--color-action)]"
+                />
+                {isEditing && (
+                  <p className="text-[10px] text-zinc-500 mt-1.5 leading-relaxed">
+                    Cambiar este valor lo sobreescribe directamente sin crear un movimiento.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                  Ritmo de la racha
+                </label>
+                <p className="text-[11px] text-zinc-500 mb-3">
+                  Periodicidad en la que se cuenta cada aporte.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {CADENCE_OPTIONS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCadence(c)}
+                      className={cn(
+                        'px-2 sm:px-3 py-3 min-h-[44px] rounded-xl text-[11px] sm:text-[12px] font-semibold border transition-colors active:scale-95',
+                        cadence === c
+                          ? 'bg-[var(--color-action)] text-white border-[var(--color-action)]'
+                          : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-[var(--color-action)]/40'
+                      )}
+                      aria-pressed={cadence === c}
+                    >
+                      {CADENCE_LABELS[c].selectorLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                  Compromiso por periodo (opcional)
+                </label>
+                <p className="text-[11px] text-zinc-500 mb-3">
+                  Si lo defines, la racha solo cuenta cuando aportas al menos
+                  este monto {CADENCE_LABELS[cadence].perPeriod}.
+                </p>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={commitmentAmount}
+                  onChange={(e) => setCommitmentAmount(e.target.value)}
+                  placeholder={`Ej. 500 ${CADENCE_LABELS[cadence].perPeriod}`}
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--color-action)] num"
                 />
               </div>
             </div>
-            <div className="mt-5">
-              <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">
-                Ritmo de la Racha
-              </label>
-              <p className="text-[11px] text-zinc-500 mb-3">
-                Elige según cómo cobras: si te pagan cada semana, quincena o mes, la racha se cuenta así.
+
+            {formError && (
+              <p className="mt-4 text-xs font-semibold text-red-600" role="alert">
+                {formError}
               </p>
-              <div className="grid grid-cols-3 gap-2">
-                {CADENCE_OPTIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCadence(c)}
-                    className={cn(
-                      'px-2 sm:px-3 py-3 min-h-[44px] rounded-xl text-[11px] sm:text-[12px] font-semibold border transition-colors',
-                      cadence === c
-                        ? 'bg-[#2D5A27] text-white border-[#2D5A27]'
-                        : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-[#2D5A27]/40'
-                    )}
-                    aria-pressed={cadence === c}
-                  >
-                    {CADENCE_LABELS[c].selectorLabel}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end">
+            )}
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeForm}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-zinc-600 hover:bg-zinc-100 transition-colors active:scale-95"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
-                className="bg-[#2D5A27] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#244920] transition-colors"
+                disabled={submitting}
+                className="bg-[var(--color-action)] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[var(--color-action-hover)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
               >
-                Guardar Meta
+                {submitting
+                  ? 'Guardando…'
+                  : isEditing
+                  ? 'Guardar cambios'
+                  : 'Crear meta'}
               </button>
             </div>
           </motion.form>
         )}
       </AnimatePresence>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {savingsGoals.length === 0 && !isAdding && (
-          <div className="col-span-full py-12 text-center text-zinc-500">
-            <Target size={48} className="mx-auto text-zinc-300 mb-4" />
-            <p className="text-lg font-medium text-zinc-600">No tienes metas de ahorro aún.</p>
-            <p className="text-sm">Tus objetivos aparecerán en el panel principal.</p>
-          </div>
+      {savingsGoals.length === 0 && !isFormOpen ? (
+        <EmptyState onCreate={openCreate} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {savingsGoals.map((goal) => {
+            const streak = streaksByGoal.get(goal.id);
+            const isContributing = contributingGoalId === goal.id;
+            const isDeleting = deletingGoalId === goal.id;
+            return (
+              <GoalCard
+                key={goal.id}
+                goal={goal}
+                streak={streak}
+                fallbackCurrency={settings.currency}
+                isContributing={isContributing}
+                contributionAmount={contributionAmount}
+                contributionError={contributionError}
+                contributing={contributing}
+                isDeleting={isDeleting}
+                onContributeOpen={() => openContribute(goal.id)}
+                onContributeClose={closeContribute}
+                onContributionAmountChange={setContributionAmount}
+                onContributeSubmit={() => handleContribute(goal)}
+                onDeleteOpen={() => openDeleteConfirm(goal.id)}
+                onDeleteCancel={cancelDelete}
+                onDeleteConfirm={() => confirmDelete(goal.id)}
+                onCadenceChange={(next) => requestCadenceChange(goal, next)}
+                onEdit={() => openEdit(goal)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <CadenceChangeModal
+        meta={pendingCadenceMeta}
+        onCancel={() => setPendingCadence(null)}
+        onConfirm={confirmCadenceChange}
+      />
+    </div>
+  );
+};
+
+interface AggregatesStripProps {
+  aggregates: {
+    activeCount: number;
+    totalCount: number;
+    accumulatedByCurrency: Array<[string, number]>;
+    monthlyCommitmentByCurrency: Array<[string, number]>;
+  };
+}
+
+const AggregatesStrip: React.FC<AggregatesStripProps> = ({ aggregates }) => {
+  const { activeCount, totalCount, accumulatedByCurrency, monthlyCommitmentByCurrency } =
+    aggregates;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <AggregateTile
+        label="Metas activas"
+        primary={`${activeCount}`}
+        secondary={
+          totalCount > activeCount
+            ? `${totalCount - activeCount} ya logradas`
+            : totalCount === 0
+            ? 'Aún ninguna'
+            : 'Todas en progreso'
+        }
+        icon={<Target size={16} strokeWidth={2} />}
+      />
+      <AggregateTile
+        label="Acumulado"
+        primary={
+          accumulatedByCurrency.length === 0
+            ? '—'
+            : formatCurrency(accumulatedByCurrency[0][1], accumulatedByCurrency[0][0])
+        }
+        secondary={
+          accumulatedByCurrency.length > 1
+            ? accumulatedByCurrency
+                .slice(1)
+                .map(([cur, amt]) => formatCurrency(amt, cur))
+                .join(' · ')
+            : 'Suma de todas las metas'
+        }
+        icon={<TrendingUp size={16} strokeWidth={2} />}
+      />
+      <AggregateTile
+        label="Compromiso mensual"
+        primary={
+          monthlyCommitmentByCurrency.length === 0
+            ? 'Sin compromiso'
+            : formatCurrency(
+                monthlyCommitmentByCurrency[0][1],
+                monthlyCommitmentByCurrency[0][0]
+              )
+        }
+        secondary={
+          monthlyCommitmentByCurrency.length > 1
+            ? monthlyCommitmentByCurrency
+                .slice(1)
+                .map(([cur, amt]) => formatCurrency(amt, cur))
+                .join(' · ')
+            : monthlyCommitmentByCurrency.length === 0
+            ? 'Define un compromiso por meta'
+            : 'Normalizado al mes'
+        }
+        icon={<Flame size={16} strokeWidth={2} />}
+      />
+    </div>
+  );
+};
+
+interface AggregateTileProps {
+  label: string;
+  primary: string;
+  secondary: string;
+  icon: React.ReactNode;
+}
+
+const AggregateTile: React.FC<AggregateTileProps> = ({ label, primary, secondary, icon }) => (
+  <div className="rounded-2xl border border-zinc-200/70 bg-white/60 glass-surface premium-shadow px-5 py-4 flex flex-col gap-2 min-h-[100px]">
+    <div className="flex items-center gap-2 text-[#7c7361]/70">
+      <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#f6f1e8] text-[#9d9687]">
+        {icon}
+      </span>
+      <span className="text-[10px] font-bold uppercase tracking-[0.24em]">{label}</span>
+    </div>
+    <div className="mt-auto">
+      <p className="text-xl font-bold tracking-tight text-emerald-900 num tabular-nums leading-none">
+        {primary}
+      </p>
+      <p className="text-[11px] text-zinc-500 mt-1.5">{secondary}</p>
+    </div>
+  </div>
+);
+
+interface GoalCardProps {
+  goal: SavingsGoal;
+  streak?: GoalStreak;
+  fallbackCurrency: string;
+  isContributing: boolean;
+  contributionAmount: string;
+  contributionError: string | null;
+  contributing: boolean;
+  isDeleting: boolean;
+  onContributeOpen: () => void;
+  onContributeClose: () => void;
+  onContributionAmountChange: (value: string) => void;
+  onContributeSubmit: () => void;
+  onDeleteOpen: () => void;
+  onDeleteCancel: () => void;
+  onDeleteConfirm: () => void;
+  onCadenceChange: (next: StreakCadence) => void;
+  onEdit: () => void;
+}
+
+const GoalCard: React.FC<GoalCardProps> = ({
+  goal,
+  streak,
+  fallbackCurrency,
+  isContributing,
+  contributionAmount,
+  contributionError,
+  contributing,
+  isDeleting,
+  onContributeOpen,
+  onContributeClose,
+  onContributionAmountChange,
+  onContributeSubmit,
+  onDeleteOpen,
+  onDeleteCancel,
+  onDeleteConfirm,
+  onCadenceChange,
+  onEdit,
+}) => {
+  const progress = Math.min(
+    100,
+    Math.round((goal.currentAmount / goal.targetAmount) * 100)
+  );
+  const isComplete = progress >= 100;
+  const goalCurrency = goal.currency || fallbackCurrency;
+  const cadence: StreakCadence = goal.streakCadence ?? 'monthly';
+  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+
+  const statusLabel = isComplete
+    ? 'COMPLETA'
+    : streak && streak.current > 0
+    ? 'ACTIVA'
+    : 'EN PROGRESO';
+
+  const statusTone = isComplete
+    ? 'text-emerald-700'
+    : streak && streak.current > 0
+    ? 'text-amber-700'
+    : 'text-[#9d9687]';
+
+  const cadenceLabels = CADENCE_LABELS[cadence];
+
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        'relative overflow-hidden rounded-[28px] border bg-white/70 glass-surface premium-shadow p-6 sm:p-7 transition-all duration-300',
+        isComplete
+          ? 'border-emerald-300/60 hover:shadow-[0_24px_50px_rgba(45,90,39,0.12)]'
+          : 'border-zinc-200/70 hover:shadow-lg hover:-translate-y-0.5'
+      )}
+    >
+      {/* Header: eyebrow + actions */}
+      <div className="flex items-center justify-between mb-4">
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-[0.3em]',
+            statusTone
+          )}
+        >
+          Meta · {statusLabel}
+        </p>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEdit}
+            aria-label="Editar meta"
+            className="p-2 rounded-xl text-zinc-400 hover:text-[var(--color-action)] hover:bg-emerald-50 transition-colors active:scale-95"
+          >
+            <Pencil size={13} strokeWidth={2} />
+          </button>
+          <button
+            onClick={onDeleteOpen}
+            aria-label="Eliminar meta"
+            className="p-2 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors active:scale-95"
+          >
+            <Trash2 size={14} strokeWidth={2} />
+          </button>
+        </div>
+      </div>
+
+      {/* Title + percentage */}
+      <div className="flex items-end justify-between gap-3 mb-3">
+        <h3 className="text-lg sm:text-xl font-bold tracking-tight text-emerald-900 truncate min-w-0">
+          {goal.title}
+        </h3>
+        <span
+          className={cn(
+            'text-3xl font-bold num leading-none tabular-nums shrink-0',
+            isComplete ? 'text-emerald-700' : 'text-[#4b5741]'
+          )}
+        >
+          {progress}%
+        </span>
+      </div>
+
+      {/* Commitment chip OR free-aporte hint */}
+      <div className="mb-5">
+        {goal.commitmentAmount && goal.commitmentAmount > 0 ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f6f1e8] border border-[#efe8da] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-brand)]">
+            <Flame size={11} strokeWidth={2.5} />
+            {formatCurrency(goal.commitmentAmount, goalCurrency)}{' '}
+            {cadenceLabels.perPeriod}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-50 border border-zinc-200 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+            Aporte libre · {cadenceLabels.selectorLabel.toLowerCase()}
+          </span>
         )}
-        
-        {savingsGoals.map(goal => {
-          const progress = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
-          const streak = streaksByGoal.get(goal.id);
-          const goalCadence: StreakCadence = goal.streakCadence ?? 'monthly';
-          return (
-            <div key={goal.id} className="bg-white p-6 rounded-3xl border border-zinc-200/60 shadow-sm relative group">
-              <div className="flex justify-between items-start mb-4">
-                <h3 className="font-bold text-zinc-900 tracking-tight pr-8">{goal.title}</h3>
-                <button
-                  onClick={() => deleteSavingsGoal(goal.id)}
-                  className="text-red-500 bg-red-50 hover:bg-red-100 hover:text-red-700 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all absolute top-4 right-4 p-2 rounded-xl"
-                  aria-label="Eliminar meta"
+      </div>
+
+      {/* Progress bar */}
+      <div className="h-2 rounded-full bg-[#f3f1ea] overflow-hidden mb-5 border border-[#efeadd]">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          className={cn(
+            'h-full rounded-full',
+            isComplete
+              ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+              : 'bg-gradient-to-r from-[#2d5a27] to-[#75b156]'
+          )}
+        />
+      </div>
+
+      {/* Amounts grid */}
+      <div className="grid grid-cols-2 gap-4 mb-5">
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9d9687]/70 mb-1">
+            Acumulado
+          </p>
+          <p className="text-[15px] font-bold text-[#4b5741] num tabular-nums leading-tight">
+            {formatCurrency(goal.currentAmount, goalCurrency)}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9d9687]/70 mb-1">
+            {isComplete ? 'Lograste' : 'Faltan'}
+          </p>
+          <p className="text-[15px] font-semibold text-[#7c7361] num tabular-nums leading-tight">
+            {isComplete
+              ? formatCurrency(goal.targetAmount, goalCurrency)
+              : formatCurrency(remaining, goalCurrency)}
+          </p>
+        </div>
+      </div>
+
+      {/* Streak / period progress */}
+      {streak && (
+        <StreakBadge
+          streak={streak}
+          goalCurrency={goalCurrency}
+          isComplete={isComplete}
+        />
+      )}
+
+      {/* Cadence selector — simplified, commitment summary already in chip above */}
+      <div className="mt-5 pt-4 border-t border-[#f0ede4] flex items-center justify-between gap-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#9d9687]/80">
+          Ritmo
+        </span>
+        <div className="relative">
+          <select
+            value={cadence}
+            onChange={(e) => onCadenceChange(e.target.value as StreakCadence)}
+            className="appearance-none bg-zinc-50 border border-zinc-200 rounded-lg pl-2.5 pr-7 py-1 text-[11px] font-semibold text-zinc-700 focus:outline-none focus:border-[var(--color-action)] cursor-pointer"
+            aria-label="Cambiar ritmo"
+          >
+            {CADENCE_OPTIONS.map((c) => (
+              <option key={c} value={c}>
+                {CADENCE_LABELS[c].selectorLabel}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={11}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+          />
+        </div>
+      </div>
+
+      {/* Aportar action */}
+      {!isComplete && !isContributing && !isDeleting && (
+        <button
+          onClick={onContributeOpen}
+          className="mt-5 w-full inline-flex items-center justify-center gap-2 bg-[var(--color-action)] text-white py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] hover:bg-[var(--color-action-hover)] transition-all shadow-[0_8px_20px_rgba(45,90,39,0.18)] active:scale-[0.98]"
+        >
+          <Plus size={14} strokeWidth={2.5} />
+          Aportar
+        </button>
+      )}
+
+      {isComplete && (
+        <div className="mt-5 inline-flex items-center justify-center gap-2 w-full bg-emerald-50 text-emerald-800 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] border border-emerald-200">
+          <Sparkles size={14} strokeWidth={2.5} />
+          Meta lograda
+        </div>
+      )}
+
+      {/* Inline Aportar form */}
+      <AnimatePresence>
+        {isContributing && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="rounded-2xl border border-[var(--color-action)]/30 bg-[#f6f9f4] p-4">
+              <label
+                htmlFor={`contribute-${goal.id}`}
+                className="block text-[9px] font-bold uppercase tracking-[0.24em] text-[var(--color-action)] mb-2"
+              >
+                ¿Cuánto aportas hoy?
+              </label>
+              <div className="relative">
+                <span
+                  aria-hidden
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold uppercase tracking-wider text-[#9d9687] pointer-events-none"
                 >
-                  <Trash2 size={16} />
+                  {goalCurrency}
+                </span>
+                <input
+                  id={`contribute-${goal.id}`}
+                  type="number"
+                  min="0"
+                  step="any"
+                  autoFocus
+                  inputMode="decimal"
+                  value={contributionAmount}
+                  onChange={(e) => onContributionAmountChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      onContributeSubmit();
+                    } else if (e.key === 'Escape') {
+                      onContributeClose();
+                    }
+                  }}
+                  placeholder="0.00"
+                  className="w-full bg-white border border-zinc-200 rounded-xl pl-14 pr-3 py-3 text-lg font-bold num text-zinc-900 placeholder:text-zinc-300 placeholder:font-medium focus:outline-none focus:border-[var(--color-action)] focus:ring-2 focus:ring-[var(--color-action)]/15 transition-all"
+                />
+              </div>
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  onClick={onContributeClose}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-white border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors active:scale-95"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={onContributeSubmit}
+                  disabled={contributing}
+                  className="flex-[1.6] inline-flex items-center justify-center gap-1.5 bg-[var(--color-action)] text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[var(--color-action-hover)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                >
+                  <Check size={13} strokeWidth={2.5} />
+                  {contributing ? 'Guardando…' : 'Confirmar aporte'}
                 </button>
               </div>
-
-              {streak && <StreakBadge streak={streak} />}
-
-              <div className="mb-4 flex items-center gap-2">
-                <label
-                  htmlFor={`cadence-${goal.id}`}
-                  className="text-[10px] font-bold uppercase tracking-widest text-zinc-400"
-                >
-                  Ritmo
-                </label>
-                <div className="relative">
-                  <select
-                    id={`cadence-${goal.id}`}
-                    value={goalCadence}
-                    onChange={(e) => handleCadenceChange(goal, e.target.value as StreakCadence)}
-                    className="appearance-none bg-zinc-50 border border-zinc-200 rounded-lg pl-2.5 pr-7 py-1 text-[11px] font-semibold text-zinc-700 focus:outline-none focus:border-[#2D5A27] cursor-pointer"
-                  >
-                    {CADENCE_OPTIONS.map((c) => (
-                      <option key={c} value={c}>{CADENCE_LABELS[c].selectorLabel}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={11} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-xs font-semibold mb-2">
-                  <span className="text-zinc-500">Progreso</span>
-                  <span className="text-[#2D5A27]">{progress}%</span>
-                </div>
-                <div className="w-full bg-zinc-100 h-2 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    className="h-full bg-[#2D5A27]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Acumulado</p>
-                  <p className="font-semibold text-zinc-900 num">{formatCurrency(goal.currentAmount, goal.currency || settings.currency)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Objetivo</p>
-                  <p className="font-semibold text-zinc-500 num">{formatCurrency(goal.targetAmount, goal.currency || settings.currency)}</p>
-                </div>
-              </div>
+              {contributionError && (
+                <p className="mt-2 text-[11px] font-semibold text-red-600" role="alert">
+                  {contributionError}
+                </p>
+              )}
+              <p className="mt-2 text-[10px] text-[#7c7361]/80 leading-relaxed">
+                Se registrará como un gasto categoría &quot;Metas&quot; ligado a esta meta.
+                Sumará al acumulado y a la racha.
+              </p>
             </div>
-          );
-        })}
-      </div>
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete confirmation overlay */}
+      <AnimatePresence>
+        {isDeleting && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/95 backdrop-blur-sm rounded-[28px] p-6 text-center"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-3">
+              <Trash2 size={20} strokeWidth={2} />
+            </div>
+            <h4 className="text-[15px] font-bold text-zinc-900 mb-1">
+              ¿Eliminar esta meta?
+            </h4>
+            <p className="text-xs text-zinc-500 max-w-[260px] leading-relaxed mb-5">
+              Se borrará <span className="font-semibold text-zinc-700">{goal.title}</span>. Los
+              movimientos ligados a ella se conservarán en tu historial.
+            </p>
+            <div className="flex gap-2 w-full max-w-[260px]">
+              <button
+                onClick={onDeleteCancel}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onDeleteConfirm}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95"
+              >
+                Eliminar
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.article>
   );
 };
 
 interface StreakBadgeProps {
   streak: GoalStreak;
+  goalCurrency: string;
+  isComplete: boolean;
 }
 
-const StreakBadge: React.FC<StreakBadgeProps> = ({ streak }) => {
-  const { current, best, aportedThisPeriod, cadence } = streak;
+const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isComplete }) => {
+  const {
+    current,
+    best,
+    aportedThisPeriod,
+    cadence,
+    commitmentAmount,
+    currentPeriodAmount,
+    currentPeriodRemaining,
+  } = streak;
   const labels = CADENCE_LABELS[cadence];
 
-  // Sin actividad nunca: ocultamos en lugar de mostrar un "0 seguidos" deprimente.
-  if (current === 0 && best === 0) return null;
+  if (isComplete) return null;
 
-  // Racha activa: verde si ya aportó este periodo, ámbar si todavía no (queda el
-  // periodo de gracia pero conviene avisar para no romperla).
+  // Sin actividad nunca: invitamos a empezar en vez de mostrar "0 seguidos".
+  if (current === 0 && best === 0 && currentPeriodAmount === 0) {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl bg-[#fbfaf6] border border-[#efe8da] px-3 py-2.5">
+        <Sparkles size={13} strokeWidth={2} className="text-[#9d9687]" />
+        <p className="text-[11px] font-semibold text-[#7c7361]">
+          Haz tu primer aporte para arrancar la racha
+        </p>
+      </div>
+    );
+  }
+
+  // Racha activa
   if (current > 0) {
     const tone = aportedThisPeriod
       ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
       : 'bg-amber-50 text-amber-800 border-amber-200';
     const unit = current === 1 ? labels.singular : labels.plural;
     return (
-      <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold border', tone)}>
-          <Flame size={12} strokeWidth={2.5} />
-          {current} {unit} {labels.consecutiveAdjective}
-        </span>
-        {best > current && (
-          <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-400">
-            Mejor: {best}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold border',
+              tone
+            )}
+          >
+            <Flame size={12} strokeWidth={2.5} />
+            {current} {unit} {labels.consecutiveAdjective}
           </span>
-        )}
-        {!aportedThisPeriod && (
-          <span className="text-[10px] text-amber-700">{labels.pendingHint}</span>
-        )}
+          {best > current && (
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              Mejor: {best}
+            </span>
+          )}
+        </div>
+        {commitmentAmount ? (
+          <PeriodProgressHint
+            current={currentPeriodAmount}
+            commitment={commitmentAmount}
+            remaining={currentPeriodRemaining}
+            currency={goalCurrency}
+            label={labels.thisPeriod}
+            met={aportedThisPeriod}
+          />
+        ) : !aportedThisPeriod ? (
+          <p className="text-[10px] font-semibold text-amber-700">{labels.pendingHint}</p>
+        ) : null}
       </div>
     );
   }
 
-  // Racha rota pero hay historia: mostrar el récord como referencia.
+  // Racha rota pero hay historia
   const recordUnit = best === 1 ? labels.singular : labels.plural;
   return (
-    <div className="mb-4 flex items-center gap-2">
-      <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-zinc-50 text-zinc-500 border border-zinc-200">
-        <Flame size={12} strokeWidth={2.5} className="text-zinc-400" />
-        Mejor racha: {best} {recordUnit}
-      </span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold bg-zinc-50 text-zinc-500 border border-zinc-200">
+          <Flame size={12} strokeWidth={2.5} className="text-zinc-400" />
+          Mejor racha: {best} {recordUnit}
+        </span>
+      </div>
+      {commitmentAmount && (
+        <PeriodProgressHint
+          current={currentPeriodAmount}
+          commitment={commitmentAmount}
+          remaining={currentPeriodRemaining}
+          currency={goalCurrency}
+          label={labels.thisPeriod}
+          met={currentPeriodAmount >= commitmentAmount}
+        />
+      )}
     </div>
   );
 };
+
+interface PeriodProgressHintProps {
+  current: number;
+  commitment: number;
+  remaining: number;
+  currency: string;
+  label: string;
+  met: boolean;
+}
+
+const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
+  current,
+  commitment,
+  remaining,
+  currency,
+  label,
+  met,
+}) => {
+  const pct = Math.min(100, Math.round((current / commitment) * 100));
+  return (
+    <div
+      className={cn(
+        'rounded-xl border px-3 py-2',
+        met ? 'bg-emerald-50/60 border-emerald-200/70' : 'bg-[#fbfaf6] border-[#efe8da]'
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-wider',
+            met ? 'text-emerald-700' : 'text-[#7c7361]'
+          )}
+        >
+          {label}
+        </span>
+        <span
+          className={cn(
+            'text-[11px] font-bold num tabular-nums',
+            met ? 'text-emerald-800' : 'text-[#4b5741]'
+          )}
+        >
+          {formatCurrency(current, currency)} / {formatCurrency(commitment, currency)}
+        </span>
+      </div>
+      <div
+        className={cn(
+          'h-1 rounded-full overflow-hidden mb-1',
+          met ? 'bg-emerald-100' : 'bg-[#efeadd]'
+        )}
+      >
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.5 }}
+          className={cn(
+            'h-full rounded-full',
+            met ? 'bg-emerald-500' : 'bg-amber-500'
+          )}
+        />
+      </div>
+      {met ? (
+        <p className="text-[10px] font-semibold text-emerald-700 inline-flex items-center gap-1">
+          <Check size={10} strokeWidth={3} />
+          Compromiso cumplido
+          {current > commitment && (
+            <span className="text-emerald-600/70 ml-1">
+              (+{formatCurrency(current - commitment, currency)})
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="text-[10px] font-medium text-amber-700">
+          Falta {formatCurrency(remaining, currency)} para mantener la racha.
+        </p>
+      )}
+    </div>
+  );
+};
+
+interface CadenceChangeModalProps {
+  meta: { goal: SavingsGoal | undefined; next: StreakCadence } | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+const CadenceChangeModal: React.FC<CadenceChangeModalProps> = ({ meta, onCancel, onConfirm }) => (
+  <AnimatePresence>
+    {meta && meta.goal && (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.18 }}
+        className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40 backdrop-blur-sm"
+        onClick={onCancel}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.96 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-md rounded-[28px] bg-white p-6 sm:p-7 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-700 mb-2">
+            Cambio de ritmo
+          </p>
+          <h3 className="text-lg font-bold text-zinc-900 mb-2">
+            ¿Confirmar cambio a {CADENCE_LABELS[meta.next].selectorLabel.toLowerCase()}?
+          </h3>
+          <p className="text-sm text-zinc-600 leading-relaxed mb-5">
+            Tu compromiso de{' '}
+            <span className="font-bold num">
+              {formatCurrency(
+                meta.goal.commitmentAmount ?? 0,
+                meta.goal.currency || 'DOP'
+              )}
+            </span>{' '}
+            pasa a aplicarse {CADENCE_LABELS[meta.next].perPeriod} (antes era{' '}
+            {CADENCE_LABELS[meta.goal.streakCadence ?? 'monthly'].perPeriod}). La racha
+            se recalcula con el nuevo ritmo y puede cambiar.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition-colors active:scale-95"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirm}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider bg-[var(--color-action)] text-white hover:bg-[var(--color-action-hover)] transition-colors active:scale-95"
+            >
+              Confirmar
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+interface EmptyStateProps {
+  onCreate: () => void;
+}
+
+const EmptyState: React.FC<EmptyStateProps> = ({ onCreate }) => (
+  <div className="rounded-[28px] border border-dashed border-[#e4dccd] bg-white/40 px-6 py-14 text-center">
+    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#f6f1e8] text-[#9d9687] mb-5 border border-[#efeadd]">
+      <Target size={28} strokeWidth={1.75} />
+    </div>
+    <h3 className="text-base font-bold text-emerald-900 tracking-tight">
+      Aún no tienes metas
+    </h3>
+    <p className="text-sm text-zinc-500 mt-1.5 max-w-[320px] mx-auto leading-relaxed">
+      Crea tu primer objetivo de ahorro y MONA cuenta cada aporte que hagas.
+    </p>
+    <button
+      onClick={onCreate}
+      className="mt-6 inline-flex items-center gap-2 bg-[var(--color-action)] text-white px-5 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-[var(--color-action-hover)] transition-colors shadow-[0_12px_24px_rgba(45,90,39,0.18)] active:scale-95"
+    >
+      <Plus size={14} strokeWidth={2.5} />
+      Crear meta
+    </button>
+  </div>
+);

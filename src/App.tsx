@@ -144,7 +144,7 @@ function AppContent() {
                   setTab('transactions');
                   setShowTransactionForm(true);
                 }}
-                className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(45,90,39,0.18)] transition-colors hover:bg-[#244920] active:scale-95"
+                className="hidden sm:inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-action)] text-white shadow-[0_12px_24px_rgba(45,90,39,0.18)] transition-colors hover:bg-[var(--color-action-hover)] active:scale-95"
               >
                 <span className="text-xl leading-none font-medium">+</span>
               </button>

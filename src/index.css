@@ -28,6 +28,8 @@
 
   --color-emerald-500: var(--color-action);
   --color-brand-light: #F0D5A1;
+  --color-brand-hover: #72582f;   /* Marrón Castaño - estado hover */
+  --color-action-hover: #244920;  /* Verde Bosque - estado hover */
 
   --color-amber-50: #fbf5e6;
   --color-amber-100: #f4e6c1;
@@ -133,7 +135,9 @@
   --color-zinc-900: #FFFFFF;
 
   --color-brand: #D4B15E; /* Oro más cálido para contraste */
+  --color-brand-hover: #b89546;
   --color-action: #52C447; /* Verde vibrante */
+  --color-action-hover: #3da632;
   --color-white: #151C15;
 }
 

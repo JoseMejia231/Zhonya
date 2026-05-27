@@ -105,7 +105,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div className="flex items-center justify-between sm:justify-start gap-4 w-full sm:w-auto">
           <div>
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#836637] dark:text-[#D4B15E]">Actividad</h2>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--color-brand)] dark:text-[var(--color-brand)]">Actividad</h2>
             <p className="text-base font-extrabold text-zinc-900 dark:text-white uppercase tracking-tighter mt-0.5">
               {effectivelyFiltered.length} {effectivelyFiltered.length === 1 ? 'transacción' : 'transacciones'}
             </p>
@@ -114,7 +114,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
             <button
               type="button"
               onClick={onAddNew}
-              className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl bg-[#836637] text-white hover:bg-[#72582f] active:scale-95 transition-all cursor-pointer shadow-sm shadow-[#836637]/20 dark:bg-[#D4B15E] dark:text-zinc-950 dark:hover:bg-[#c2a04e] dark:shadow-[#D4B15E]/10 flex items-center gap-1"
+              className="px-3.5 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] rounded-xl bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-hover)] active:scale-95 transition-all cursor-pointer shadow-sm shadow-[var(--color-brand)]/20 dark:bg-[var(--color-brand)] dark:text-zinc-950 dark:hover:bg-[var(--color-brand-hover)] dark:shadow-[var(--color-brand)]/10 flex items-center gap-1"
               aria-label="Nuevo movimiento"
             >
               <Plus size={12} strokeWidth={3} />
@@ -181,7 +181,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
           placeholder="Buscar descripción, nota o categoría..."
           value={searchQuery}
           onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(50); }}
-          className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-xs font-semibold focus:outline-none focus:border-[#836637] dark:focus:border-[#D4B15E] focus:bg-white dark:focus:bg-zinc-900 focus:ring-4 focus:ring-[#836637]/5 dark:focus:ring-[#D4B15E]/5 transition-all"
+          className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl text-xs font-semibold focus:outline-none focus:border-[var(--color-brand)] dark:focus:border-[var(--color-brand)] focus:bg-white dark:focus:bg-zinc-900 focus:ring-4 focus:ring-[var(--color-brand)]/5 dark:focus:ring-[var(--color-brand)]/5 transition-all"
         />
       </div>
 
@@ -254,7 +254,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                   <div className="flex items-center gap-3 pl-[10px] py-1">
                     {/* Circle Node overlapping vertical timeline line */}
                     <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-950 border-2 border-white dark:border-zinc-900 shadow-sm flex items-center justify-center shrink-0 z-10">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#836637] dark:bg-[#D4B15E]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-brand)] dark:bg-[var(--color-brand)]" />
                     </div>
                     
                     <span className="text-[9px] font-black uppercase tracking-[0.2em] bg-zinc-50 dark:bg-zinc-950/80 text-zinc-500 dark:text-zinc-400 px-3 py-1 border border-zinc-200/50 dark:border-zinc-800/50 rounded-full shadow-[0_1px_4px_rgba(0,0,0,0.01)] num">
@@ -279,7 +279,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                           className="group pl-[46px] relative"
                         >
                           {/* Small Timeline Entry Dot */}
-                          <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full border-[2.5px] border-white dark:border-zinc-900 bg-zinc-200 dark:bg-zinc-800 group-hover:bg-[#836637] dark:group-hover:bg-[#D4B15E] group-hover:scale-110 transition-all z-10" />
+                          <div className="absolute left-[18px] top-1/2 -translate-y-1/2 w-[11px] h-[11px] rounded-full border-[2.5px] border-white dark:border-zinc-900 bg-zinc-200 dark:bg-zinc-800 group-hover:bg-[var(--color-brand)] dark:group-hover:bg-[var(--color-brand)] group-hover:scale-110 transition-all z-10" />
 
                           {/* Card body */}
                           <div className="flex items-center gap-3 p-3.5 bg-white rounded-[22px] border border-zinc-200 hover:border-zinc-300 shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.03)] dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-all duration-300 relative overflow-hidden">
@@ -287,7 +287,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                             {/* Visual background indicator stripe for type */}
                             <div className={cn(
                               "absolute left-0 top-0 bottom-0 w-1",
-                              t.type === 'income' ? 'bg-emerald-500' : 'bg-[#836637]/30 dark:bg-[#D4B15E]/30'
+                              t.type === 'income' ? 'bg-emerald-500' : 'bg-[var(--color-brand)]/30 dark:bg-[var(--color-brand)]/30'
                             )} />
 
                             {/* Left Cash icon inside a glass bubble */}
@@ -295,7 +295,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                               className={cn(
                                 'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border transition-colors',
                                 t.type === 'income'
-                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/10 text-emerald-600 dark:text-[#52C447]'
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/10 text-emerald-600 dark:text-[var(--color-action)]'
                                   : 'bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-200/50 dark:border-zinc-850/50 text-zinc-600 dark:text-zinc-400'
                               )}
                             >
@@ -315,7 +315,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                                 <span
                                   className={cn(
                                     'text-xs sm:text-sm font-black whitespace-nowrap num shrink-0',
-                                    t.type === 'income' ? 'text-emerald-600 dark:text-[#52C447]' : 'text-zinc-800 dark:text-white'
+                                    t.type === 'income' ? 'text-emerald-600 dark:text-[var(--color-action)]' : 'text-zinc-800 dark:text-white'
                                   )}
                                 >
                                   {t.type === 'income' ? '+' : '−'}

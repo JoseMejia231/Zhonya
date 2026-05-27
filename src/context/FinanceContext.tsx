@@ -200,16 +200,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await setDoc(transactionRef, transaction);
     } catch (error) {
-      if (transaction.goalId && isPermissionDenied(error)) {
-        console.warn(
-          '[MONA] Firestore rules rejected transaction.goalId. Saving transaction without goalId and keeping the goal link locally.'
-        );
-        const { goalId, ...firestoreSafeTransaction } = transaction;
-        await setDoc(transactionRef, firestoreSafeTransaction);
-        writeGoalLink(transaction.uid, transaction.id, goalId);
-        return;
-      }
-      throw error;
+      if (!isPermissionDenied(error)) throw error;
+      // Las rules viejas (pre-bc88665) rechazan goalId y/o currency. Reintentamos
+      // sin esos campos para que el guardado no se rompa si alguien clona el repo
+      // antes de que se haya desplegado `firebase deploy --only firestore:rules`.
+      // El goalId se preserva localmente para no perder el vínculo con la meta.
+      const { goalId, currency, ...firestoreSafeTransaction } = transaction;
+      if (goalId === undefined && currency === undefined) throw error;
+      console.warn(
+        '[MONA] Firestore rules rejected transaction fields (likely goalId/currency).',
+        'Saving without them; deploy firestore.rules to enable.'
+      );
+      await setDoc(transactionRef, firestoreSafeTransaction);
+      if (goalId) writeGoalLink(transaction.uid, transaction.id, goalId);
     }
   };
 
@@ -556,6 +559,21 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await setDoc(settingsRef, payload);
     } catch (err) {
+      // Mismo escenario que setTransactionDoc: si las rules viejas no conocen
+      // hideBalance, lo reintentamos sin él. El estado local conserva el toggle.
+      if (isPermissionDenied(err) && 'hideBalance' in payload) {
+        const { hideBalance: _omit, ...safePayload } = payload;
+        try {
+          await setDoc(settingsRef, safePayload);
+          console.warn(
+            '[MONA] Firestore rules rejected settings.hideBalance. Persisted other settings; deploy firestore.rules to enable.'
+          );
+          return;
+        } catch (retryErr) {
+          showError('No se pudo guardar la configuración', retryErr);
+          return;
+        }
+      }
       showError('No se pudo guardar la configuración', err);
     }
   };
@@ -713,11 +731,32 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...(g.currency ? { currency: g.currency } : {}),
       ...(g.deadline ? { deadline: g.deadline } : {}),
       ...(g.streakCadence ? { streakCadence: g.streakCadence } : {}),
+      ...(g.commitmentAmount && g.commitmentAmount > 0
+        ? { commitmentAmount: g.commitmentAmount }
+        : {}),
     };
+    const goalRef = doc(db, 'users', user.uid, 'savingsGoals', id);
     try {
-      await setDoc(doc(db, 'users', user.uid, 'savingsGoals', id), payload);
+      await setDoc(goalRef, payload);
     } catch (err) {
+      // Fallback: si las rules viejas no conocen commitmentAmount, lo descartamos
+      // y reintentamos. Sigue el mismo patrón que setTransactionDoc para que un
+      // pull antes de `firebase deploy --only firestore:rules` no rompa la meta.
+      if (isPermissionDenied(err) && payload.commitmentAmount !== undefined) {
+        const { commitmentAmount: _omit, ...safePayload } = payload;
+        try {
+          await setDoc(goalRef, safePayload);
+          console.warn(
+            '[MONA] Firestore rules rejected savingsGoal.commitmentAmount. Saved without it; deploy firestore.rules to enable.'
+          );
+          return id;
+        } catch (retryErr) {
+          showError('No se pudo guardar la meta', retryErr);
+          return '';
+        }
+      }
       showError('No se pudo guardar la meta', err);
+      return '';
     }
     return id;
   };

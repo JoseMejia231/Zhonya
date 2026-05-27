@@ -34,18 +34,25 @@ export const BudgetsEditor: React.FC = () => {
   };
 
   return (
-    <section className="bg-white rounded-3xl border border-zinc-200/70 shadow-sm overflow-hidden">
-      <div className="px-5 pt-5 pb-3 flex items-center gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center">
-          <Wallet size={15} className="text-zinc-700" />
+    <section className="rounded-[32px] border border-zinc-200/70 bg-white/70 glass-surface premium-shadow overflow-hidden">
+      <div className="px-6 sm:px-7 pt-6 pb-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-[#f6f1e8] flex items-center justify-center text-[var(--color-brand)]">
+          <Wallet size={16} strokeWidth={2} />
         </div>
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-zinc-900">Presupuestos</h3>
-          <p className="text-[11px] text-zinc-500">Monto mensual destinado por categoría.</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-[#9d9687]/70 mb-0.5">
+            Plan mensual
+          </p>
+          <h3 className="text-base font-bold tracking-tight text-emerald-900">
+            Presupuestos
+          </h3>
+          <p className="text-[11px] text-zinc-500 mt-0.5">
+            Monto mensual destinado por categoría.
+          </p>
         </div>
       </div>
 
-      <ul className="border-t border-zinc-100">
+      <ul className="border-t border-[#f0ede4]">
         {(settings.expenseCategories || settings.categories || []).map((cat) => {
           const isEditing = editing === cat;
           const value = budgets[cat];
@@ -55,8 +62,8 @@ export const BudgetsEditor: React.FC = () => {
             <li
               key={cat}
               className={cn(
-                'flex items-center gap-3 px-5 py-3 border-b border-zinc-100 last:border-b-0 transition-colors',
-                isEditing ? 'bg-zinc-50' : ''
+                'flex items-center gap-3 px-6 sm:px-7 py-3 border-b border-[#f0ede4] last:border-b-0 transition-colors',
+                isEditing ? 'bg-[#f6f1e8]/40' : ''
               )}
             >
               <span className="text-sm font-medium text-zinc-900 flex-1 min-w-0 truncate">
@@ -65,7 +72,7 @@ export const BudgetsEditor: React.FC = () => {
 
               {isEditing ? (
                 <div className="flex items-center gap-1.5">
-                  <div className="flex items-center bg-white border border-zinc-200 rounded-xl focus-within:border-zinc-900 focus-within:ring-4 focus-within:ring-zinc-900/5 transition-all overflow-hidden">
+                  <div className="flex items-center bg-white border border-zinc-200 rounded-xl focus-within:border-[var(--color-action)] focus-within:ring-4 focus-within:ring-[var(--color-action)]/10 transition-all overflow-hidden">
                     <span className="pl-2.5 pr-1 text-xs text-zinc-400 select-none num">
                       {symbol}
                     </span>
@@ -82,14 +89,14 @@ export const BudgetsEditor: React.FC = () => {
                         if (e.key === 'Escape') cancel();
                       }}
                       placeholder="0.00"
-                      className="w-24 py-1.5 pr-2 bg-transparent focus:outline-none text-sm font-semibold num text-right"
+                      className="w-24 py-1.5 pr-2 bg-transparent focus:outline-none text-sm font-semibold num text-right text-zinc-900"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => commit(cat)}
                     aria-label="Guardar"
-                    className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 active:bg-zinc-700 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg bg-[var(--color-action)] text-white hover:bg-[var(--color-action-hover)] transition-colors cursor-pointer active:scale-95"
                   >
                     <Check size={14} strokeWidth={2.5} />
                   </button>
@@ -97,7 +104,7 @@ export const BudgetsEditor: React.FC = () => {
                     type="button"
                     onClick={cancel}
                     aria-label="Cancelar"
-                    className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center min-w-[36px] min-h-[36px] rounded-lg text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer active:scale-95"
                   >
                     <X size={14} />
                   </button>
@@ -107,10 +114,10 @@ export const BudgetsEditor: React.FC = () => {
                   type="button"
                   onClick={() => startEdit(cat)}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30',
+                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-action)]/30 active:scale-95',
                     hasBudget
-                      ? 'bg-zinc-50 text-zinc-900 hover:bg-zinc-100'
-                      : 'text-zinc-400 hover:text-zinc-700 hover:bg-zinc-50'
+                      ? 'bg-[#f6f1e8]/60 text-[var(--color-action)] hover:bg-[#f6f1e8]'
+                      : 'text-zinc-400 hover:text-[var(--color-brand)] hover:bg-[#f6f1e8]/40'
                   )}
                 >
                   {hasBudget ? (
