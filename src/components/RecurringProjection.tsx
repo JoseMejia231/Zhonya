@@ -60,7 +60,7 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
       ) : (
         <>
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 mb-5">
             <Kpi
               label="Compromiso este mes"
               value={formatCurrency(current?.expense ?? 0, settings.currency)}

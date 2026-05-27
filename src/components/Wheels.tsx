@@ -514,7 +514,7 @@ const WheelSheet: React.FC<{ initial: SheetDraft; onClose: () => void }> = ({ in
                   </button>
                 </div>
                 {mode === 'transaction' && (
-                  <div className="grid grid-cols-2 gap-2 pl-7">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-7">
                     <div className="flex items-center bg-white border border-zinc-200 rounded-lg overflow-hidden">
                       <span className="pl-2.5 pr-1 text-xs text-zinc-400 num">{symbol}</span>
                       <input
@@ -797,10 +797,15 @@ const SpinView: React.FC<{ wheel: Wheel; onClose: () => void }> = ({ wheel, onCl
                 }
               : { duration: 0 }
           }
-          style={{ width: SIZE, height: SIZE }}
+          style={{
+            // En pantallas chicas la rueda se achica para no salirse del viewport.
+            // El viewBox del SVG mantiene las proporciones internas.
+            width: 'min(320px, calc(100vw - 2.5rem))',
+            aspectRatio: '1 / 1',
+          }}
           className="relative"
         >
-          <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+          <svg width="100%" height="100%" viewBox={`0 0 ${SIZE} ${SIZE}`}>
             <defs>
               <radialGradient id="wheel-shine" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="rgba(255,255,255,0.04)" />
