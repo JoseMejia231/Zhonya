@@ -34,10 +34,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
   const { addTransaction, settings, updateSettings, transactions, savingsGoals } = useFinance();
   const [type, setType] = useState<TransactionType>('expense');
 
-  const incomeCats = [...(settings.incomeCategories || settings.categories || [])];
-  if (!incomeCats.includes('Metas')) incomeCats.push('Metas');
-
-  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const incomeCats = settings.incomeCategories || settings.categories || [];
+  const expenseCats = [...(settings.expenseCategories || settings.categories || [])];
+  if (!expenseCats.includes('Metas')) expenseCats.push('Metas');
   const activeCategories = type === 'income' ? incomeCats : expenseCats;
 
   const sortedCategories = useMemo(() => {
@@ -56,6 +55,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
   const [date, setDate] = useState(todayLocalISO());
   const [justSaved, setJustSaved] = useState(false);
   const [selectedGoalId, setSelectedGoalId] = useState<string>(savingsGoals.length > 0 ? savingsGoals[0].id : '');
+
+  useEffect(() => {
+    if (sortedCategories.length === 0) {
+      setCategory('');
+      return;
+    }
+    if (!category || !sortedCategories.includes(category)) {
+      setCategory(sortedCategories[0]);
+    }
+  }, [category, sortedCategories]);
+
+  useEffect(() => {
+    if (selectedGoalId && savingsGoals.some((goal) => goal.id === selectedGoalId)) return;
+    setSelectedGoalId(savingsGoals[0]?.id || '');
+  }, [savingsGoals, selectedGoalId]);
 
   // Currency dropdown state
   const [currencyOpen, setCurrencyOpen] = useState(false);

@@ -78,7 +78,7 @@ const DEFAULT_SETTINGS: UserSettings = {
   currency: 'DOP',
   theme: 'light',
   incomeCategories: ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'],
-  expenseCategories: ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Otros Gastos'],
+  expenseCategories: ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Metas', 'Otros Gastos'],
 };
 
 const INITIAL_STATE: FinanceState = {
@@ -94,7 +94,7 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
     case 'UPDATE_SETTINGS':
       return {
         ...state,
-        settings: { ...state.settings, ...action.payload },
+        settings: normalizeSettings({ ...state.settings, ...action.payload }),
       };
     case 'SET_FILTER':
       return { ...state, filter: action.payload };
@@ -104,6 +104,54 @@ function financeReducer(state: FinanceState, action: FinanceAction): FinanceStat
       return state;
   }
 }
+
+const uniqueStrings = (values: unknown[]) =>
+  Array.from(
+    new Set(
+      values
+        .filter((value): value is string => typeof value === 'string')
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+
+const normalizeSettings = (settings: Partial<UserSettings>): UserSettings => {
+  const legacyCategories = Array.isArray(settings.categories) ? uniqueStrings(settings.categories) : [];
+  const configuredIncome = Array.isArray(settings.incomeCategories)
+    ? uniqueStrings(settings.incomeCategories)
+    : [];
+  const configuredExpense = Array.isArray(settings.expenseCategories)
+    ? uniqueStrings(settings.expenseCategories)
+    : [];
+
+  const migratedIncome = legacyCategories.filter((cat) =>
+    DEFAULT_SETTINGS.incomeCategories.includes(cat)
+  );
+  const migratedExpense = legacyCategories.filter((cat) =>
+    !DEFAULT_SETTINGS.incomeCategories.includes(cat)
+  );
+
+  const incomeCategories =
+    configuredIncome.length > 0
+      ? configuredIncome
+      : migratedIncome.length > 0
+      ? migratedIncome
+      : DEFAULT_SETTINGS.incomeCategories;
+
+  const expenseCategories =
+    configuredExpense.length > 0
+      ? configuredExpense
+      : migratedExpense.length > 0
+      ? migratedExpense
+      : DEFAULT_SETTINGS.expenseCategories;
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    incomeCategories: uniqueStrings(incomeCategories),
+    expenseCategories: uniqueStrings([...expenseCategories, 'Metas']),
+  };
+};
 
 export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(financeReducer, INITIAL_STATE);

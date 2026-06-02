@@ -72,7 +72,8 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
   }, [isOpen, onClose]);
 
   const incomeCats = settings.incomeCategories || settings.categories || [];
-  const expenseCats = settings.expenseCategories || settings.categories || [];
+  const expenseCats = [...(settings.expenseCategories || settings.categories || [])];
+  if (!expenseCats.includes('Metas')) expenseCats.push('Metas');
   const activeCategories = type === 'income' ? incomeCats : expenseCats;
 
   const sortedCategories = useMemo(() => {
@@ -89,6 +90,11 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
     }
     return sorted;
   }, [transactions, activeCategories, type, category]);
+
+  useEffect(() => {
+    if (!isOpen || category || sortedCategories.length === 0) return;
+    setCategory(sortedCategories[0]);
+  }, [category, isOpen, sortedCategories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
