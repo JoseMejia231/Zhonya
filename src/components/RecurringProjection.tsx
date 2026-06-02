@@ -83,7 +83,7 @@ export const RecurringProjection: React.FC<RecurringProjectionProps> = ({ months
 
           {/* Bar chart */}
           <div className="h-56 w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5dccb" />
                 <XAxis

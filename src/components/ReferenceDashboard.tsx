@@ -365,7 +365,7 @@ export const ComparativeChart: React.FC<{ period?: AnalysisPeriod }> = ({ period
         />
       ) : (
       <div className="h-[300px] mt-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <AreaChart data={flowData} margin={{ top: 10, right: 10, left: -25, bottom: 15 }}>
             <defs>
               <linearGradient id="flowGreen" x1="0" y1="0" x2="0" y2="1">
@@ -465,7 +465,7 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
       ) : (
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
         <div className="h-32 w-32 sm:h-36 sm:w-36 shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
               <Pie
                 data={categoryData}
