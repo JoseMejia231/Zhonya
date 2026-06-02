@@ -35,6 +35,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
   const [type, setType] = useState<TransactionType>('expense');
 
   const incomeCats = settings.incomeCategories || settings.categories || [];
+  // 'Metas' debe poder elegirse como gasto (aporte a meta). normalizeSettings
+  // en el context ya lo persiste, esto es defensivo por si llega un settings
+  // legacy sin esa entrada antes de la primera escritura.
   const expenseCats = [...(settings.expenseCategories || settings.categories || [])];
   if (!expenseCats.includes('Metas')) expenseCats.push('Metas');
   const activeCategories = type === 'income' ? incomeCats : expenseCats;
@@ -490,7 +493,10 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
               {savingsGoals.map(g => {
-                const percent = Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100));
+                const isFreeGoal = (g.kind ?? 'goal') === 'free' || !g.targetAmount;
+                const percent = isFreeGoal
+                  ? 0
+                  : Math.min(100, Math.round((g.currentAmount / (g.targetAmount as number)) * 100));
                 const isSelected = selectedGoalId === g.id;
                 return (
                   <button
@@ -512,16 +518,25 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
                     </div>
                     
                     <div className="w-full">
-                      <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400 mb-1 leading-none">
-                        <span>{percent}%</span>
-                        <span className="num">{formatCurrency(g.currentAmount, g.currency || settings.currency)} / {formatCurrency(g.targetAmount, g.currency || settings.currency)}</span>
-                      </div>
-                      <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
-                        <div 
-                          className={cn("h-full rounded-full transition-all duration-500", isSelected ? "bg-emerald-500 dark:bg-[var(--color-action)]" : "bg-zinc-300")}
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
+                      {isFreeGoal ? (
+                        <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400 leading-none">
+                          <span className="uppercase tracking-wider">Ahorro libre</span>
+                          <span className="num">{formatCurrency(g.currentAmount, g.currency || settings.currency)}</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between text-[9px] font-bold text-zinc-400 mb-1 leading-none">
+                            <span>{percent}%</span>
+                            <span className="num">{formatCurrency(g.currentAmount, g.currency || settings.currency)} / {formatCurrency(g.targetAmount as number, g.currency || settings.currency)}</span>
+                          </div>
+                          <div className="w-full h-1 bg-zinc-100 rounded-full overflow-hidden">
+                            <div
+                              className={cn("h-full rounded-full transition-all duration-500", isSelected ? "bg-emerald-500 dark:bg-[var(--color-action)]" : "bg-zinc-300")}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
                   </button>
                 );

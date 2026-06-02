@@ -130,10 +130,35 @@ export const sendRecurringReminders = onSchedule(
       const userPath = ref.ref.parent.parent;
       if (!userPath) continue;
 
+      // Ingresos fijos: registramos la tx automáticamente sin push. La idea es
+      // que un sueldo aparezca solo cuando llega su fecha — el usuario ya lo
+      // sabe, no hace falta confirmarlo cada periodo. El cliente también tiene
+      // un efecto de backfill por si esta ejecución no corrió a tiempo.
+      if (rec.type === 'income') {
+        const txId = `${rec.id}-${expectedKey}`;
+        const txDate = todayScheduled.toISOString();
+        try {
+          await userPath.collection('transactions').doc(txId).set({
+            id: txId,
+            uid: rec.uid,
+            amount: rec.amount,
+            category: rec.category,
+            type: 'income',
+            description: rec.name,
+            date: txDate,
+          });
+        } catch (err) {
+          logger.error('Fallo creando tx automática de ingreso', { recId: rec.id, err });
+          continue;
+        }
+        await ref.ref.update({ lastNotifiedKey: expectedKey });
+        continue;
+      }
+
       const tokensSnap = await userPath.collection('pushTokens').get();
       const tokens = tokensSnap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => d.id);
 
-      const verb = rec.type === 'income' ? 'Ingreso' : 'Pago';
+      const verb = 'Pago';
       const formattedAmount = new Intl.NumberFormat('es', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,

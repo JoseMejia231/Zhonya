@@ -187,19 +187,19 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
 
       {/* Balanced Summary Widget Card — una fila por moneda, estilo gradient + dark del dueño */}
       {(effectivelyFiltered.length > 0 || filteredTransactions.length > 0) && totalsByCurrency.length > 0 && (
-        <div className="mb-6 p-1.5 sm:p-2 bg-gradient-to-r from-emerald-50 to-emerald-100 dark:from-emerald-900 dark:to-emerald-800 rounded-2xl border border-emerald-300 dark:border-emerald-600 shadow-md space-y-1.5">
+        <div className="mb-6 p-1.5 sm:p-2 bg-[var(--color-action)]/8 dark:bg-[var(--color-action)]/15 rounded-2xl border border-[var(--color-action)]/20 dark:border-[var(--color-action)]/30 shadow-md space-y-1.5">
           {totalsByCurrency.map((t) => (
             <div key={t.currency}>
               {totalsByCurrency.length > 1 && (
-                <span className="block px-2 pt-1 pb-1 text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                <span className="block px-2 pt-1 pb-1 text-[10px] font-black uppercase tracking-wider text-[var(--color-action)]">
                   {t.currency}
                 </span>
               )}
               <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                 {/* Income */}
-                <div className="flex flex-col items-center text-center p-2 sm:p-3 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200 dark:border-emerald-700 shadow-sm min-w-0">
-                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-300 mb-1">Ingresos</span>
-                  <span className="text-xs sm:text-lg font-extrabold text-emerald-700 dark:text-emerald-200 num flex items-center gap-0.5 sm:gap-1">
+                <div className="flex flex-col items-center text-center p-2 sm:p-3 bg-white dark:bg-zinc-900 rounded-xl border border-[var(--color-action)]/25 shadow-sm min-w-0">
+                  <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-[var(--color-action)] mb-1">Ingresos</span>
+                  <span className="text-xs sm:text-lg font-extrabold text-[var(--color-action)] num flex items-center gap-0.5 sm:gap-1">
                     <ArrowDownLeft size={12} className="stroke-[2] shrink-0 hidden sm:block" />
                     {formatCurrency(t.income, t.currency)}
                   </span>
@@ -219,7 +219,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                   <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-zinc-500 mb-1">Balance</span>
                   <span className={cn(
                     "text-xs sm:text-lg font-black num",
-                    t.net >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-rose-700 dark:text-rose-300"
+                    t.net >= 0 ? "text-[var(--color-action)]" : "text-rose-700 dark:text-rose-300"
                   )}>
                     {t.net >= 0 ? '+' : ''}{formatCurrency(t.net, t.currency)}
                   </span>
@@ -295,7 +295,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                               className={cn(
                                 'flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border transition-colors',
                                 t.type === 'income'
-                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/10 text-emerald-600 dark:text-[var(--color-action)]'
+                                  ? 'bg-[var(--color-action)]/8 border-[var(--color-action)]/15 text-[var(--color-action)]'
                                   : 'bg-zinc-50/50 dark:bg-zinc-950/20 border-zinc-200/50 dark:border-zinc-850/50 text-zinc-600 dark:text-zinc-400'
                               )}
                             >
@@ -315,7 +315,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                                 <span
                                   className={cn(
                                     'text-xs sm:text-sm font-black whitespace-nowrap num shrink-0',
-                                    t.type === 'income' ? 'text-emerald-600 dark:text-[var(--color-action)]' : 'text-zinc-800 dark:text-white'
+                                    t.type === 'income' ? 'text-[var(--color-action)]' : 'text-zinc-800 dark:text-white'
                                   )}
                                 >
                                   {t.type === 'income' ? '+' : '−'}
@@ -329,7 +329,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                                     {t.category}
                                   </span>
                                   {t.goalId && savingsGoals.find(g => g.id === t.goalId) && (
-                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/50 dark:border-emerald-800/50 text-emerald-600 dark:text-emerald-400 max-w-[80px] sm:max-w-none truncate flex items-center gap-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-[var(--color-action)]/10 border border-[var(--color-action)]/20 text-[var(--color-action)] max-w-[80px] sm:max-w-none truncate flex items-center gap-1">
                                       <Target size={10} strokeWidth={3} />
                                       {savingsGoals.find(g => g.id === t.goalId)?.title}
                                     </span>
@@ -460,7 +460,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({ onAddNew }) =>
                   <p
                     className={cn(
                       'text-lg font-semibold num mt-0.5',
-                      pendingDelete.type === 'income' ? 'text-emerald-600' : 'text-zinc-900'
+                      pendingDelete.type === 'income' ? 'text-[var(--color-action)]' : 'text-zinc-900'
                     )}
                   >
                     {pendingDelete.type === 'income' ? '+' : '−'}

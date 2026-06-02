@@ -8,7 +8,7 @@ import {
   StatCard,
   SavingsRateCard,
   LibroOperativo,
-  IntuicionAutonoma,
+  InsightCard,
   ProjectProgress,
   SampleDataBanner,
   MonthComparisonCard,
@@ -231,6 +231,7 @@ const OverviewSection: React.FC = () => (
     </div>
 
     <div className="space-y-6">
+      <InsightCard />
       <LibroOperativo />
     </div>
   </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { RecurringExpense, RecurringFrequency, TransactionType } from '../types';
 import { cn, getCurrencySymbol } from '../utils';
+import { getDefaultNotifyTime } from '../utils/localPrefs';
 import { X, Minus, Plus, Repeat, CalendarRange, CalendarDays, Clock, Check } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -14,7 +15,7 @@ export interface RecurringSheetProps {
 }
 
 export const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose }) => {
-  const { upsertRecurring, settings } = useFinance();
+  const { upsertRecurring, settings, user } = useFinance();
   const [type, setType] = useState<TransactionType>(initial?.type ?? 'expense');
   
   const incomeCats = settings.incomeCategories || settings.categories || [];
@@ -33,7 +34,11 @@ export const RecurringSheet: React.FC<RecurringSheetProps> = ({ initial, onClose
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>(
     initial?.daysOfWeek && initial.daysOfWeek.length > 0 ? initial.daysOfWeek : [1]
   );
-  const [notifyTime, setNotifyTime] = useState(initial?.notifyTime ?? '09:00');
+  // Para edits respetamos el notifyTime guardado; para nuevos, leemos la
+  // preferencia local del usuario (configurable desde Settings > Notificaciones).
+  const [notifyTime, setNotifyTime] = useState(
+    initial?.notifyTime ?? getDefaultNotifyTime(user?.uid)
+  );
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [saving, setSaving] = useState(false);
 

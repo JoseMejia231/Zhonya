@@ -86,15 +86,25 @@ export interface RecurringExpense {
 
 export type StreakCadence = 'weekly' | 'biweekly' | 'monthly';
 
+/**
+ * 'goal': meta clásica con objetivo monetario y progreso porcentual.
+ * 'free': meta libre (sin objetivo) — sólo trackea acumulado y racha.
+ * Cuando el campo está ausente se asume 'goal' por retrocompatibilidad.
+ */
+export type SavingsGoalKind = 'goal' | 'free';
+
 export interface SavingsGoal {
   id: string;
   uid: string;
   title: string;
-  targetAmount: number;
+  /** Obligatorio en metas 'goal'; opcional/ignorado en 'free'. */
+  targetAmount?: number;
   currentAmount: number;
   currency?: string;
   createdAt: string; // ISO
   deadline?: string; // ISO
+  /** Tipo de meta. Default 'goal' por compatibilidad con docs existentes. */
+  kind?: SavingsGoalKind;
   /** Periodicidad con la que se evalúa la racha de aportes. Default 'monthly'. */
   streakCadence?: StreakCadence;
   /**

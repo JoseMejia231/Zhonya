@@ -154,14 +154,24 @@ service cloud.firestore {
     }
 
     function isValidSavingsGoal(data) {
-      return hasRequiredFields(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
-             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline', 'currency', 'streakCadence', 'commitmentAmount']) &&
+      // 'kind' diferencia metas con objetivo ('goal') de metas libres ('free').
+      // En 'goal' targetAmount es obligatorio y > 0; en 'free' se omite. Por
+      // retrocompatibilidad, si 'kind' está ausente se asume 'goal' (docs viejos).
+      return hasRequiredFields(['id', 'uid', 'title', 'currentAmount', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'uid', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'deadline', 'currency', 'kind', 'streakCadence', 'commitmentAmount']) &&
              data.id is string && data.id.size() > 0 && data.id.size() < 100 &&
              data.uid == request.auth.uid &&
              data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
-             data.targetAmount is number && data.targetAmount > 0 &&
              data.currentAmount is number && data.currentAmount >= 0 &&
              isValidDateString(data.createdAt) &&
+             (!('kind' in data) || data.kind in ['goal', 'free']) &&
+             (
+               // Meta con objetivo: requiere targetAmount > 0.
+               (!('kind' in data) || data.kind == 'goal') ?
+                 ('targetAmount' in data && data.targetAmount is number && data.targetAmount > 0)
+               // Meta libre: targetAmount no debe estar (o 0 si está, lo aceptamos por flexibilidad).
+               : (!('targetAmount' in data) || (data.targetAmount is number && data.targetAmount >= 0))
+             ) &&
              (!('deadline' in data) || isValidDateString(data.deadline)) &&
              (!('currency' in data) || (data.currency is string && data.currency.size() > 0 && data.currency.size() < 10)) &&
              (!('streakCadence' in data) || data.streakCadence in ['weekly', 'biweekly', 'monthly']) &&

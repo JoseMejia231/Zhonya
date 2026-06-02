@@ -15,12 +15,17 @@ import {
   doc,
   onSnapshot,
   setDoc,
+  updateDoc,
   deleteDoc,
+  deleteField,
+  getDocs,
+  writeBatch,
   query,
   where,
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
+import { localKeysForUser } from '../utils/localPrefs';
 import { isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 
 type FinanceAction =
@@ -68,17 +73,24 @@ interface FinanceContextType extends FinanceState {
   savingsGoals: SavingsGoal[];
   upsertSavingsGoal: (goal: Omit<SavingsGoal, 'uid' | 'createdAt'> & { id?: string; createdAt?: string }) => Promise<string>;
   deleteSavingsGoal: (id: string) => Promise<void>;
+  /** Borra todas las subcolecciones del usuario y resetea settings a defaults. Acción destructiva. */
+  wipeAllData: () => Promise<void>;
   errorMessage: string | null;
   dismissError: () => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
+export const DEFAULT_INCOME_CATEGORIES = ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'];
+// 'Metas' va en defaults porque el flujo de aportar/retirar usa esta categoría.
+// normalizeSettings también la re-fuerza en cada UPDATE_SETTINGS por seguridad.
+export const DEFAULT_EXPENSE_CATEGORIES = ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Metas', 'Otros Gastos'];
+
 const DEFAULT_SETTINGS: UserSettings = {
   currency: 'DOP',
   theme: 'light',
-  incomeCategories: ['Salario', 'Inversión', 'Regalos', 'Otros Ingresos'],
-  expenseCategories: ['Comida', 'Transporte', 'Entretenimiento', 'Salud', 'Compras', 'Servicios', 'Metas', 'Otros Gastos'],
+  incomeCategories: DEFAULT_INCOME_CATEGORIES,
+  expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
 };
 
 const INITIAL_STATE: FinanceState = {
@@ -86,6 +98,11 @@ const INITIAL_STATE: FinanceState = {
   settings: DEFAULT_SETTINGS,
   filter: 'all',
 };
+
+// Efecto de una transacción vinculada a una meta sobre su acumulado:
+// aportar (expense) suma al sobre, retirar (income) lo devuelve a tu cuenta y resta.
+const goalDelta = (t: { type: 'income' | 'expense'; amount: number }) =>
+  t.type === 'expense' ? t.amount : -t.amount;
 
 function financeReducer(state: FinanceState, action: FinanceAction): FinanceState {
   switch (action.type) {
@@ -189,6 +206,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   useEffect(() => {
     latestSettingsRef.current = state.settings;
   }, [state.settings]);
+
+  // Same patrón para metas y transacciones. Sin esto, `adjustGoalAmount` puede
+  // leer un `savingsGoals` capturado por closure que ya quedó atrás (por ej. el
+  // aporte que sumó +X y luego intentamos restar contra el currentAmount viejo,
+  // dejando la meta con dinero "fantasma"). Mismo problema para tx en delete.
+  const latestSavingsGoalsRef = React.useRef<SavingsGoal[]>(savingsGoals);
+  useEffect(() => {
+    latestSavingsGoalsRef.current = savingsGoals;
+  }, [savingsGoals]);
+  const latestTransactionsRef = React.useRef<Transaction[]>(state.transactions);
+  useEffect(() => {
+    latestTransactionsRef.current = state.transactions;
+  }, [state.transactions]);
 
   const buildSettingsPayload = (settings: UserSettings) => {
     const allCats = [...(settings.incomeCategories || []), ...(settings.expenseCategories || [])];
@@ -480,9 +510,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   // Helper: ajusta el currentAmount de un goal en delta (puede ser negativo).
   // No baja de 0 para evitar estados absurdos si el usuario reasigna metas.
   // Redondea a 2 decimales para evitar drift acumulado entre operaciones.
+  // Lee la meta del ref (no del closure) para que dos ajustes seguidos vean
+  // siempre el currentAmount más reciente y no se pisen.
   const adjustGoalAmount = async (goalId: string, delta: number) => {
     if (!user || delta === 0) return;
-    const goal = savingsGoals.find((g) => g.id === goalId);
+    const goal = latestSavingsGoalsRef.current.find((g) => g.id === goalId);
     if (!goal) return;
     const roundedDelta = Math.round(delta * 100) / 100;
     const nextAmount = Math.max(0, Math.round((goal.currentAmount + roundedDelta) * 100) / 100);
@@ -490,6 +522,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       ...goal,
       currentAmount: nextAmount,
     };
+    // Actualización optimista del ref para que un segundo ajuste encadenado
+    // (p. ej. borrar dos aportes seguidos antes de que llegue el snapshot)
+    // arranque del valor correcto y no del Firestore-aún-no-llegado.
+    latestSavingsGoalsRef.current = latestSavingsGoalsRef.current.map((g) =>
+      g.id === goalId ? payload : g
+    );
     try {
       await setDoc(doc(db, 'users', user.uid, 'savingsGoals', goalId), payload);
     } catch (err) {
@@ -516,7 +554,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       return;
     }
     if (options?.syncGoalBalance && newTransaction.goalId) {
-      await adjustGoalAmount(newTransaction.goalId, newTransaction.amount);
+      await adjustGoalAmount(newTransaction.goalId, goalDelta(newTransaction));
     }
   };
 
@@ -524,13 +562,43 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return;
     // Comparamos prev vs next para mantener el currentAmount del goal vinculado:
     // cambio de monto, cambio de goalId, o quitar/agregar el vínculo de meta.
-    const previous = state.transactions.find((t) => t.id === id) ?? null;
+    // Leemos del ref por si un snapshot entró entre el render y este call.
+    const previous = latestTransactionsRef.current.find((t) => t.id === id) ?? null;
+    // Si el caller envía explícitamente goalId === undefined (desvincular meta),
+    // Firestore con setDoc+merge ignora ese campo, así que el goalId quedaría
+    // pegado en el doc. Usamos updateDoc + deleteField para borrarlo de verdad.
+    const removingGoal = 'goalId' in updates && updates.goalId === undefined;
+    const txRef = doc(db, 'users', user.uid, 'transactions', id);
     try {
-      await setDoc(doc(db, 'users', user.uid, 'transactions', id), updates, { merge: true });
+      if (removingGoal) {
+        const { goalId: _omit, ...rest } = updates;
+        await updateDoc(txRef, { ...rest, goalId: deleteField() });
+      } else {
+        await setDoc(txRef, updates, { merge: true });
+      }
     } catch (err) {
-      showError('No se pudo actualizar el movimiento', err);
-      return;
+      // Mismo fallback que setTransactionDoc: rules viejas rechazan goalId/currency.
+      // Reintentamos sin ellos y guardamos el goalId localmente.
+      if (isPermissionDenied(err) && (('goalId' in updates) || ('currency' in updates))) {
+        const { goalId, currency, ...safe } = updates;
+        try {
+          await setDoc(txRef, safe, { merge: true });
+          if (goalId) writeGoalLink(user.uid, id, goalId);
+          else if (removingGoal) deleteGoalLink(user.uid, id);
+          console.warn(
+            '[MONA] Firestore rules rejected transaction fields on update (likely goalId/currency).',
+            'Saved without them; deploy firestore.rules to enable.'
+          );
+        } catch (retryErr) {
+          showError('No se pudo actualizar el movimiento', retryErr);
+          return;
+        }
+      } else {
+        showError('No se pudo actualizar el movimiento', err);
+        return;
+      }
     }
+    if (removingGoal) deleteGoalLink(user.uid, id);
     if (!previous) return;
     const next: Transaction = {
       ...previous,
@@ -538,12 +606,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       id: previous.id,
       uid: previous.uid,
     };
+    if (removingGoal) {
+      next.goalId = undefined;
+    }
     if (previous.goalId && previous.goalId === next.goalId) {
-      const delta = next.amount - previous.amount;
-      if (delta) await adjustGoalAmount(previous.goalId, delta);
+      const diff = goalDelta(next) - goalDelta(previous);
+      if (diff) await adjustGoalAmount(previous.goalId, diff);
     } else {
-      if (previous.goalId) await adjustGoalAmount(previous.goalId, -previous.amount);
-      if (next.goalId) await adjustGoalAmount(next.goalId, next.amount);
+      if (previous.goalId) await adjustGoalAmount(previous.goalId, -goalDelta(previous));
+      if (next.goalId) await adjustGoalAmount(next.goalId, goalDelta(next));
     }
   };
 
@@ -556,7 +627,10 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const deleteTransaction = async (id: string) => {
     if (!user) return;
-    const tx = state.transactions.find((t) => t.id === id) ?? null;
+    // Leemos del ref para evitar perder el goalId si un snapshot llegó entre
+    // el render del componente y este invoke (cosa que dejaría a la meta con
+    // el aporte "fantasma" sin revertir).
+    const tx = latestTransactionsRef.current.find((t) => t.id === id) ?? null;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'transactions', id));
     } catch (err) {
@@ -567,7 +641,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     // (caso legacy: el goalId estaba en localStorage por fallback).
     deleteGoalLink(user.uid, id);
     if (tx) {
-      if (tx.goalId) await adjustGoalAmount(tx.goalId, -tx.amount);
+      if (tx.goalId) await adjustGoalAmount(tx.goalId, -goalDelta(tx));
       setLastDeleted(tx);
       clearUndoTimer();
       undoTimerRef.current = setTimeout(() => setLastDeleted(null), 5000);
@@ -585,8 +659,8 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       showError('No se pudo deshacer la eliminación', err);
       return;
     }
-    // Re-aplicar el aporte a la meta si la transacción la tenía.
-    if (tx.goalId) await adjustGoalAmount(tx.goalId, tx.amount);
+    // Re-aplicar el efecto sobre la meta si la transacción la tenía.
+    if (tx.goalId) await adjustGoalAmount(tx.goalId, goalDelta(tx));
   };
 
   const dismissUndo = () => {
@@ -769,13 +843,16 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     const existing = savingsGoals.find((x) => x.id === id);
     // El validador de Firestore rechaza claves desconocidas, así que solo incluimos
     // los campos opcionales cuando tienen valor (omitirlos == undefined-friendly).
+    // Meta libre no lleva targetAmount; meta clásica lo requiere y debe ser > 0.
+    const kind = g.kind ?? 'goal';
     const payload: SavingsGoal = {
       id,
       uid: user.uid,
       title: g.title,
-      targetAmount: g.targetAmount,
       currentAmount: g.currentAmount,
       createdAt: existing?.createdAt ?? g.createdAt ?? new Date().toISOString(),
+      ...(kind === 'goal' && g.targetAmount ? { targetAmount: g.targetAmount } : {}),
+      ...(kind === 'free' ? { kind: 'free' } : {}),
       ...(g.currency ? { currency: g.currency } : {}),
       ...(g.deadline ? { deadline: g.deadline } : {}),
       ...(g.streakCadence ? { streakCadence: g.streakCadence } : {}),
@@ -787,15 +864,26 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await setDoc(goalRef, payload);
     } catch (err) {
-      // Fallback: si las rules viejas no conocen commitmentAmount, lo descartamos
-      // y reintentamos. Sigue el mismo patrón que setTransactionDoc para que un
-      // pull antes de `firebase deploy --only firestore:rules` no rompa la meta.
-      if (isPermissionDenied(err) && payload.commitmentAmount !== undefined) {
-        const { commitmentAmount: _omit, ...safePayload } = payload;
+      // Fallback escalonado: rules viejas pueden no conocer `kind` y/o
+      // `commitmentAmount`. Si rechaza el write, reintentamos quitando esos
+      // campos para que un pull antes del deploy no rompa la operación.
+      if (isPermissionDenied(err) && (payload.kind !== undefined || payload.commitmentAmount !== undefined)) {
+        const { kind: _omitKind, commitmentAmount: _omitCommit, ...safePayload } = payload;
+        // Si era 'free' sin target, las rules viejas exigen target > 0 — no hay
+        // forma de degradar sin romper semántica; abortamos con error claro.
+        // El mensaje es para el usuario final, que no necesariamente puede
+        // desplegar Firebase (depende del dueño del proyecto).
+        if (kind === 'free' && !payload.targetAmount) {
+          showError(
+            'Las metas libres aún no están disponibles. Mientras tanto, crea una meta con un monto objetivo.',
+            err
+          );
+          return '';
+        }
         try {
           await setDoc(goalRef, safePayload);
           console.warn(
-            '[MONA] Firestore rules rejected savingsGoal.commitmentAmount. Saved without it; deploy firestore.rules to enable.'
+            '[MONA] Firestore rules rejected savingsGoal.kind/commitmentAmount. Saved without them; deploy firestore.rules to enable.'
           );
           return id;
         } catch (retryErr) {
@@ -815,6 +903,33 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       await deleteDoc(doc(db, 'users', user.uid, 'savingsGoals', id));
     } catch (err) {
       showError('No se pudo eliminar la meta', err);
+    }
+  };
+
+  // Wipe destructivo: barre cada subcolección por lotes (límite de 500 por
+  // batch). Las settings no se pueden borrar (no hay regla allow delete), las
+  // reseteamos al default. También limpiamos localStorage del usuario para que
+  // no queden goalLinks colgando ni la preferencia local de notifyTime.
+  const wipeAllData = async () => {
+    if (!user) return;
+    const subcollections = ['transactions', 'recurringExpenses', 'wheels', 'savingsGoals', 'pushTokens'];
+    try {
+      for (const col of subcollections) {
+        const snap = await getDocs(collection(db, 'users', user.uid, col));
+        for (let i = 0; i < snap.docs.length; i += 400) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
+      }
+      const settingsRef = doc(db, 'users', user.uid, 'settings', 'current');
+      await setDoc(settingsRef, buildSettingsPayload(DEFAULT_SETTINGS));
+      for (const key of localKeysForUser(user.uid)) {
+        try { localStorage.removeItem(key); } catch {}
+      }
+    } catch (err) {
+      showError('No se pudieron borrar todos los datos', err);
+      throw err;
     }
   };
 
@@ -864,6 +979,124 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       showError('No se pudo registrar el pago', err);
     }
   };
+
+  // Ingresos fijos: se auto-registran cuando llega su fecha programada. La idea
+  // es que un sueldo (que el usuario sabe que cobra siempre) no requiera confirmar
+  // cada periodo — la confirmación manual sigue existiendo como respaldo para
+  // gastos. Backfill acotado a 14 días para no inundar a usuarios que vuelvan
+  // tras varios meses sin abrir la app. Usamos lastNotifiedKey como marcador de
+  // "ya procesé hasta aquí" para no recrear periodos que el usuario haya borrado.
+  useEffect(() => {
+    if (!user || loading || recurring.length === 0) return;
+
+    const parseNotifyHM = (raw?: string) => {
+      const m = /^([0-2]\d):([0-5]\d)$/.exec(raw ?? '');
+      if (!m) return { hours: 9, minutes: 0 };
+      const h = Number(m[1]);
+      const mm = Number(m[2]);
+      return { hours: h > 23 ? 9 : h, minutes: mm };
+    };
+
+    const enumerateOccurrences = (rec: RecurringExpense, from: Date, to: Date) => {
+      const { hours, minutes } = parseNotifyHM(rec.notifyTime);
+      const out: { date: Date; periodKey: string }[] = [];
+      if (rec.frequency === 'daily') {
+        const cur = new Date(from.getFullYear(), from.getMonth(), from.getDate(), hours, minutes);
+        while (cur.getTime() <= to.getTime()) {
+          if (cur.getTime() >= from.getTime()) {
+            out.push({ date: new Date(cur), periodKey: periodKeyFor(rec, cur) });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else if (rec.frequency === 'weekly') {
+        const targets = new Set(rec.daysOfWeek ?? []);
+        if (targets.size === 0) return out;
+        const cur = new Date(from.getFullYear(), from.getMonth(), from.getDate(), hours, minutes);
+        while (cur.getTime() <= to.getTime()) {
+          if (cur.getTime() >= from.getTime() && targets.has(cur.getDay())) {
+            out.push({ date: new Date(cur), periodKey: periodKeyFor(rec, cur) });
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      } else {
+        const daysRaw = Array.isArray(rec.dayOfMonth)
+          ? rec.dayOfMonth
+          : [(rec.dayOfMonth as number) ?? 1];
+        const days = Array.from(new Set(daysRaw)).sort((a, b) => a - b);
+        let monthCur = new Date(from.getFullYear(), from.getMonth(), 1);
+        while (monthCur.getTime() <= to.getTime()) {
+          const year = monthCur.getFullYear();
+          const month = monthCur.getMonth();
+          const lastDay = new Date(year, month + 1, 0).getDate();
+          for (const day of days) {
+            const effective = Math.min(Math.max(1, day), lastDay);
+            const cur = new Date(year, month, effective, hours, minutes);
+            if (cur.getTime() >= from.getTime() && cur.getTime() <= to.getTime()) {
+              out.push({ date: new Date(cur), periodKey: periodKeyFor(rec, cur) });
+            }
+          }
+          monthCur = new Date(year, month + 1, 1);
+        }
+      }
+      return out;
+    };
+
+    const now = new Date();
+    const minStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    (async () => {
+      for (const rec of recurring) {
+        if (!rec.enabled || rec.type !== 'income') continue;
+        const created = rec.createdAt ? new Date(rec.createdAt) : new Date(0);
+        const from = created.getTime() > minStart.getTime() ? created : minStart;
+        const occurrences = enumerateOccurrences(rec, from, now);
+        if (occurrences.length === 0) continue;
+
+        const lastKey = rec.lastNotifiedKey ?? '';
+        const candidates = lastKey
+          ? occurrences.filter((o) => o.periodKey > lastKey)
+          : occurrences;
+        if (candidates.length === 0) continue;
+
+        let latestKey: string | null = null;
+        for (const occ of candidates) {
+          latestKey = occ.periodKey;
+          const txId = txIdForRecurring(rec, occ.periodKey);
+          if (state.transactions.some((t) => t.id === txId)) continue;
+          const tx: Transaction = {
+            id: txId,
+            uid: user.uid,
+            amount: rec.amount,
+            category: rec.category,
+            type: 'income',
+            description: rec.name,
+            date: occ.date.toISOString(),
+          };
+          try {
+            await setTransactionDoc(tx);
+          } catch (err) {
+            console.error('[finance] auto-log income recurring failed', err);
+          }
+        }
+
+        // Avanzamos el marcador incluso si todas las txs ya existían. Sin esto,
+        // un usuario con lastNotifiedKey vacío re-iteraría las mismas ocurrencias
+        // en cada snapshot tick. Una vez sincronizado, el filtro > lastKey lo
+        // estabiliza.
+        if (latestKey && rec.lastNotifiedKey !== latestKey) {
+          try {
+            await setDoc(doc(db, 'users', user.uid, 'recurringExpenses', rec.id), {
+              ...rec,
+              lastNotifiedKey: latestKey,
+            });
+          } catch (err) {
+            console.error('[finance] update lastNotifiedKey failed', err);
+          }
+        }
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, recurring, state.transactions, loading]);
 
   // SW → app: las acciones de la notificación llegan vía postMessage cuando
   // hay una pestaña abierta, o vía URL params al abrir la PWA en frío.
@@ -953,6 +1186,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
         savingsGoals,
         upsertSavingsGoal,
         deleteSavingsGoal,
+        wipeAllData,
         errorMessage,
         dismissError,
       }}

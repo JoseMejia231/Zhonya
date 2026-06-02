@@ -204,8 +204,13 @@ export const LibroOperativo: React.FC = () => {
     <div className={cn(SURFACES.card, 'p-6 sm:p-7')}>
       <div className="mb-6 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-[#7c7361]/80">Libro operativo</h3>
-        <button className="inline-flex items-center gap-2 rounded-xl border border-[#e8e0d2] bg-[#f6f1e8] px-3.5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-[#75806b] transition-all hover:bg-[#f3ede2] hover:scale-105 active:scale-95">
-          Expandir
+        <button
+          onClick={() => {
+            window.location.hash = '#/transactions';
+          }}
+          className="inline-flex items-center gap-2 rounded-xl border border-[#e8e0d2] bg-[#f6f1e8] px-3.5 py-2 text-sm font-bold uppercase tracking-[0.24em] text-[#75806b] transition-all hover:bg-[#f3ede2] hover:scale-105 active:scale-95"
+        >
+          Ver todo
           <ChevronRight size={14} />
         </button>
       </div>
@@ -259,23 +264,95 @@ export const LibroOperativo: React.FC = () => {
   );
 };
 
-export const IntuicionAutonoma: React.FC = () => {
+/**
+ * Insight calculado de transacciones reales: compara el gasto del mes en curso
+ * con el del mes anterior y destaca la categoría principal. Excluye la categoría
+ * "Metas" porque los aportes a metas son ahorro, no gasto de consumo.
+ */
+export const InsightCard: React.FC = () => {
+  const { transactions, settings } = useFinance();
+  const currency = settings.currency || 'DOP';
+
+  const insight = useMemo(() => {
+    const now = new Date();
+    const lastMonth = subMonths(now, 1);
+    const isSpend = (t: (typeof transactions)[number]) =>
+      t.type === 'expense' && t.category !== 'Metas';
+
+    let thisTotal = 0;
+    let lastTotal = 0;
+    const byCat = new Map<string, number>();
+    for (const t of transactions) {
+      if (!isSpend(t)) continue;
+      const d = parseISO(t.date);
+      if (isSameMonth(d, now)) {
+        thisTotal += t.amount;
+        byCat.set(t.category, (byCat.get(t.category) ?? 0) + t.amount);
+      } else if (isSameMonth(d, lastMonth)) {
+        lastTotal += t.amount;
+      }
+    }
+
+    let topCat: { name: string; amount: number } | null = null;
+    for (const [name, amount] of byCat) {
+      if (!topCat || amount > topCat.amount) topCat = { name, amount };
+    }
+
+    const pct =
+      lastTotal > 0 ? Math.round(((thisTotal - lastTotal) / lastTotal) * 100) : null;
+
+    return { thisTotal, lastTotal, topCat, pct, hasData: thisTotal > 0 || lastTotal > 0 };
+  }, [transactions]);
+
+  const up = (insight.pct ?? 0) > 0;
+
   return (
-    <div className={cn(SURFACES.dark, 'relative overflow-hidden p-7 text-white group')}>
+    <div className={cn(SURFACES.night, 'relative overflow-hidden p-7 text-white group')}>
       <div className="absolute -right-10 -bottom-10 text-white/5 transition-transform duration-700 group-hover:scale-110 group-hover:-rotate-12">
         <Sparkles size={220} strokeWidth={1} />
       </div>
       <div className="flex items-center gap-2 mb-4">
         <Sparkles size={16} className="text-white/40" />
-        <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/30">Intuición autónoma</p>
+        <p className="text-sm font-bold uppercase tracking-[0.3em] text-white/30">Tu mes</p>
       </div>
-      <p className="relative max-w-xl text-[15px] font-medium leading-relaxed text-white/90">
-        Plan de gasto estable. El índice sugiere <span className="font-bold underline decoration-white/40 underline-offset-8">$2k allocation</span> a
-        "Fondo de Reserva" hoy.
-      </p>
-      <button className="relative mt-8 inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-bold uppercase tracking-[0.3em] text-white transition-all hover:bg-white/15 hover:premium-shadow active:scale-[0.98]">
-        Ejecutar optimización
-      </button>
+
+      {!insight.hasData ? (
+        <p className="relative text-[15px] font-medium leading-relaxed text-white/80">
+          Aún no registras gastos este mes. En cuanto sumes movimientos, acá verás cómo
+          evolucionas frente al mes pasado.
+        </p>
+      ) : (
+        <div className="relative space-y-4">
+          <p className="text-[15px] font-medium leading-relaxed text-white/90">
+            Llevas{' '}
+            <span className="font-bold num">{formatMoney(insight.thisTotal, currency)}</span> en
+            gastos este mes
+            {insight.pct !== null && (
+              <>
+                ,{' '}
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 font-bold',
+                    up ? 'text-[#f0a3a3]' : 'text-[#a7e0a0]'
+                  )}
+                >
+                  {up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {Math.abs(insight.pct)}% {up ? 'más' : 'menos'}
+                </span>{' '}
+                que el mes pasado.
+              </>
+            )}
+            {insight.pct === null && '.'}
+          </p>
+          {insight.topCat && (
+            <p className="text-[13px] text-white/60">
+              Tu categoría principal:{' '}
+              <span className="font-bold text-white/80">{insight.topCat.name}</span> ·{' '}
+              <span className="num">{formatMoney(insight.topCat.amount, currency)}</span>
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -298,30 +375,37 @@ export const ProjectProgress: React.FC = () => {
     <div className={cn(SURFACES.night, 'relative overflow-hidden p-5 sm:p-6 text-white')}>
       <div className="space-y-7 relative z-10">
         {savingsGoals.map(goal => {
-          const progress = Math.min(100, Math.round((goal.currentAmount / goal.targetAmount) * 100));
           const currency = goal.currency || settings.currency || 'USD';
-          
+          const isFree = (goal.kind ?? 'goal') === 'free' || !goal.targetAmount;
+          const progress = isFree
+            ? 0
+            : Math.min(100, Math.round((goal.currentAmount / (goal.targetAmount as number)) * 100));
+
           return (
             <div key={goal.id}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-bold uppercase tracking-[0.28em] text-white/40">
-                  PROYECTO: {goal.title}
+                  {isFree ? 'AHORRO' : 'PROYECTO'}: {goal.title}
                 </p>
-                <span className="text-sm font-bold text-[#75b156]">{progress}%</span>
+                {!isFree && <span className="text-sm font-bold text-[#75b156]">{progress}%</span>}
               </div>
 
               <div className="mt-2.5">
                 <h4 className="text-sm font-semibold num tracking-tight text-white/90">
-                  {formatMoney(goal.currentAmount, currency)} / {formatMoney(goal.targetAmount, currency)}
+                  {isFree
+                    ? formatMoney(goal.currentAmount, currency)
+                    : `${formatMoney(goal.currentAmount, currency)} / ${formatMoney(goal.targetAmount as number, currency)}`}
                 </h4>
-                <div className="mt-3 h-1.5 rounded-full bg-white/6 overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.9, ease: 'easeOut' }}
-                    className="h-full rounded-full bg-[#75b156]"
-                  />
-                </div>
+                {!isFree && (
+                  <div className="mt-3 h-1.5 rounded-full bg-white/6 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.9, ease: 'easeOut' }}
+                      className="h-full rounded-full bg-[#75b156]"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           );

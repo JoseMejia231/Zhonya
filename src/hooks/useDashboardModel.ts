@@ -278,11 +278,12 @@ export function useDashboardModel({ period = 'month' }: { period?: AnalysisPerio
   const activeProject = useMemo(() => {
     if (savingsGoals && savingsGoals.length > 0) {
       const g = savingsGoals[0];
+      const target = g.targetAmount ?? 0;
       return {
         title: `PROYECTO: ${g.title.toUpperCase()}`,
-        progress: Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)),
+        progress: target > 0 ? Math.min(100, Math.round((g.currentAmount / target) * 100)) : 0,
         current: g.currentAmount,
-        target: g.targetAmount,
+        target,
         currency: g.currency,
       };
     }

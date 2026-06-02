@@ -5,7 +5,14 @@ import { useFinance } from '../context/FinanceContext';
 import { formatCurrency } from '../utils';
 
 export const UndoToast: React.FC = () => {
-  const { lastDeleted, undoDelete, dismissUndo, settings } = useFinance();
+  const { lastDeleted, undoDelete, dismissUndo, settings, savingsGoals } = useFinance();
+
+  // Si la transacción borrada estaba vinculada a una meta, el contexto ya
+  // revirtió el aporte. Lo comunicamos en el toast para que el ajuste no sea
+  // invisible (antes el usuario veía la meta cambiar sin saber por qué).
+  const linkedGoal = lastDeleted?.goalId
+    ? savingsGoals.find((g) => g.id === lastDeleted.goalId)
+    : null;
 
   return (
     <AnimatePresence>
@@ -22,10 +29,21 @@ export const UndoToast: React.FC = () => {
         >
           {/* Progress ring behind the close icon */}
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-xs font-semibold">Transacción eliminada</span>
-            <span className="text-[11px] text-white/50 truncate num">
-              {lastDeleted.description || lastDeleted.category} ·{' '}
-              {formatCurrency(lastDeleted.amount, settings.currency)}
+            <span className="text-xs font-semibold">
+              {linkedGoal ? 'Aporte revertido' : 'Transacción eliminada'}
+            </span>
+            <span className="text-[11px] text-white/60 truncate num">
+              {linkedGoal ? (
+                <>
+                  Meta {linkedGoal.title} · −
+                  {formatCurrency(lastDeleted.amount, linkedGoal.currency || settings.currency)}
+                </>
+              ) : (
+                <>
+                  {lastDeleted.description || lastDeleted.category} ·{' '}
+                  {formatCurrency(lastDeleted.amount, settings.currency)}
+                </>
+              )}
             </span>
           </div>
 
@@ -51,7 +69,7 @@ export const UndoToast: React.FC = () => {
             initial={{ scaleX: 1 }}
             animate={{ scaleX: 0 }}
             transition={{ duration: 5, ease: 'linear' }}
-            className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-400/70 origin-left rounded-b-2xl"
+            className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#75b156]/80 origin-left rounded-b-2xl"
             key={lastDeleted.id}
           />
         </motion.div>

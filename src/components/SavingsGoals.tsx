@@ -3,6 +3,7 @@ import { useFinance } from '../context/FinanceContext';
 import {
   Target,
   Plus,
+  Minus,
   Trash2,
   ChevronDown,
   Flame,
@@ -15,7 +16,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, cn } from '../utils';
 import { CADENCE_LABELS, computeGoalStreak, type GoalStreak } from '../utils/streaks';
-import type { SavingsGoal, StreakCadence } from '../types';
+import type { SavingsGoal, SavingsGoalKind, StreakCadence } from '../types';
 
 const CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN'] as const;
 const CADENCE_OPTIONS: StreakCadence[] = ['weekly', 'biweekly', 'monthly'];
@@ -43,6 +44,7 @@ export const SavingsGoalsSection: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [title, setTitle] = useState('');
+  const [kind, setKind] = useState<SavingsGoalKind>('goal');
   const [targetAmount, setTargetAmount] = useState('');
   const [currentAmount, setCurrentAmount] = useState('');
   const [currency, setCurrency] = useState(settings.currency || 'DOP');
@@ -53,6 +55,7 @@ export const SavingsGoalsSection: React.FC = () => {
 
   // Estado por-card para inline UIs (Aportar / Confirmar borrado / Confirmar cadencia).
   const [contributingGoalId, setContributingGoalId] = useState<string | null>(null);
+  const [contributionMode, setContributionMode] = useState<'add' | 'withdraw'>('add');
   const [contributionAmount, setContributionAmount] = useState('');
   const [contributionError, setContributionError] = useState<string | null>(null);
   const [contributing, setContributing] = useState(false);
@@ -78,11 +81,14 @@ export const SavingsGoalsSection: React.FC = () => {
   }, [transactions, savingsGoals]);
 
   // Resumen agregado del header: # metas activas, total acumulado por moneda,
-  // compromiso mensual total normalizado.
+  // compromiso mensual total normalizado. Las metas libres no se "completan",
+  // así que siempre cuentan como activas.
   const aggregates = useMemo(() => {
-    const activeGoals = savingsGoals.filter(
-      (g) => g.currentAmount < g.targetAmount
-    );
+    const activeGoals = savingsGoals.filter((g) => {
+      if ((g.kind ?? 'goal') === 'free') return true;
+      const target = g.targetAmount ?? 0;
+      return target > 0 && g.currentAmount < target;
+    });
     const accumulatedByCurrency = new Map<string, number>();
     for (const g of savingsGoals) {
       const cur = g.currency || settings.currency || 'DOP';
@@ -113,7 +119,10 @@ export const SavingsGoalsSection: React.FC = () => {
   useEffect(() => {
     if (!editingGoal) return;
     setTitle(editingGoal.title);
-    setTargetAmount(String(editingGoal.targetAmount));
+    setKind(editingGoal.kind ?? 'goal');
+    setTargetAmount(
+      editingGoal.targetAmount ? String(editingGoal.targetAmount) : ''
+    );
     setCurrentAmount(String(editingGoal.currentAmount));
     setCurrency(editingGoal.currency || settings.currency || 'DOP');
     setCadence(editingGoal.streakCadence ?? 'monthly');
@@ -125,6 +134,7 @@ export const SavingsGoalsSection: React.FC = () => {
 
   const resetForm = () => {
     setTitle('');
+    setKind('goal');
     setTargetAmount('');
     setCurrentAmount('');
     setCadence('monthly');
@@ -163,12 +173,13 @@ export const SavingsGoalsSection: React.FC = () => {
     const targetNum = Number(targetAmount);
     const currentNum = Number(currentAmount || '0');
     const commitmentNum = Number(commitmentAmount || '0');
+    const isFree = kind === 'free';
 
     if (!trimmedTitle) {
       setFormError('El nombre de la meta es obligatorio.');
       return;
     }
-    if (!Number.isFinite(targetNum) || targetNum <= 0) {
+    if (!isFree && (!Number.isFinite(targetNum) || targetNum <= 0)) {
       setFormError('El monto objetivo debe ser mayor que 0.');
       return;
     }
@@ -176,7 +187,7 @@ export const SavingsGoalsSection: React.FC = () => {
       setFormError('El monto actual no puede ser negativo.');
       return;
     }
-    if (currentNum > targetNum) {
+    if (!isFree && currentNum > targetNum) {
       setFormError('El monto actual no puede superar el objetivo.');
       return;
     }
@@ -189,7 +200,8 @@ export const SavingsGoalsSection: React.FC = () => {
     const resultId = await upsertSavingsGoal({
       ...(editingGoal ? { id: editingGoal.id } : {}),
       title: trimmedTitle,
-      targetAmount: targetNum,
+      kind,
+      ...(isFree ? {} : { targetAmount: targetNum }),
       currentAmount: currentNum,
       currency,
       streakCadence: cadence,
@@ -203,14 +215,11 @@ export const SavingsGoalsSection: React.FC = () => {
 
   const requestCadenceChange = (goal: SavingsGoal, next: StreakCadence) => {
     if (next === (goal.streakCadence ?? 'monthly')) return;
-    if (goal.commitmentAmount && goal.commitmentAmount > 0) {
-      // Cambiar de mensual a semanal hace que $500 pase de ser "por mes" a "por
-      // semana": el compromiso se vuelve mucho más exigente sin que el usuario
-      // lo cambie. Pedimos confirmación para evitar romper rachas en silencio.
-      setPendingCadence({ goalId: goal.id, next });
-      return;
-    }
-    void upsertSavingsGoal({ ...goal, streakCadence: next });
+    // Cualquier cambio de cadencia reagrupa los aportes en ventanas distintas y
+    // puede recalcular `current` y `best`. Si además hay compromiso, el monto
+    // pasa a aplicar a la nueva ventana (p. ej. $500/mes → $500/semana, mucho
+    // más exigente). Confirmamos siempre para que no haya cambios silenciosos.
+    setPendingCadence({ goalId: goal.id, next });
   };
 
   const confirmCadenceChange = async () => {
@@ -224,8 +233,9 @@ export const SavingsGoalsSection: React.FC = () => {
     setPendingCadence(null);
   };
 
-  const openContribute = (goalId: string) => {
+  const openContribute = (goalId: string, mode: 'add' | 'withdraw' = 'add') => {
     setContributingGoalId(goalId);
+    setContributionMode(mode);
     setContributionAmount('');
     setContributionError(null);
     setDeletingGoalId(null);
@@ -245,13 +255,20 @@ export const SavingsGoalsSection: React.FC = () => {
       setContributionError('Indica un monto mayor que 0.');
       return;
     }
+    const isWithdraw = contributionMode === 'withdraw';
+    if (isWithdraw && amt > goal.currentAmount) {
+      setContributionError('No puedes retirar más de lo acumulado.');
+      return;
+    }
     setContributing(true);
+    // Aporte = expense (sale de tu cuenta al sobre). Retiro = income (vuelve a
+    // tu cuenta). El context resta del acumulado según el tipo (ver goalDelta).
     await addTransaction(
       {
         amount: amt,
-        type: 'expense',
+        type: isWithdraw ? 'income' : 'expense',
         category: 'Metas',
-        description: `Aporte: ${goal.title}`,
+        description: `${isWithdraw ? 'Retiro' : 'Aporte'}: ${goal.title}`,
         date: new Date().toISOString(),
         currency: goal.currency || settings.currency,
         goalId: goal.id,
@@ -289,7 +306,7 @@ export const SavingsGoalsSection: React.FC = () => {
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-[#7c7361]/80 mb-2">
             Objetivos de Ahorro
           </p>
-          <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-emerald-900">
+          <h2 className="text-2xl sm:text-[28px] font-bold tracking-tight text-[var(--color-action)]">
             Tus metas activas
           </h2>
           <p className="text-sm text-zinc-500 mt-1.5">
@@ -336,12 +353,68 @@ export const SavingsGoalsSection: React.FC = () => {
               <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#9d9687] mb-1">
                 {isEditing ? 'Editar meta' : 'Nueva meta'}
               </p>
-              <h3 className="text-lg font-bold tracking-tight text-emerald-900">
+              <h3 className="text-lg font-bold tracking-tight text-[var(--color-action)]">
                 {isEditing ? editingGoal!.title : 'Define tu próximo objetivo'}
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Toggle de tipo de meta: con objetivo vs libre. */}
+            <div className="mb-5">
+              <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                Tipo de meta
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-w-md">
+                <button
+                  type="button"
+                  onClick={() => setKind('goal')}
+                  className={cn(
+                    'px-3 py-3 min-h-[44px] rounded-xl text-[12px] font-semibold border transition-colors active:scale-95 text-left',
+                    kind === 'goal'
+                      ? 'bg-[var(--color-action)] text-white border-[var(--color-action)]'
+                      : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-[var(--color-action)]/40'
+                  )}
+                  aria-pressed={kind === 'goal'}
+                >
+                  Con objetivo
+                  <span
+                    className={cn(
+                      'block text-[10px] font-medium mt-0.5',
+                      kind === 'goal' ? 'text-white/80' : 'text-zinc-500'
+                    )}
+                  >
+                    Hacia un monto concreto
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKind('free')}
+                  className={cn(
+                    'px-3 py-3 min-h-[44px] rounded-xl text-[12px] font-semibold border transition-colors active:scale-95 text-left',
+                    kind === 'free'
+                      ? 'bg-[var(--color-action)] text-white border-[var(--color-action)]'
+                      : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-[var(--color-action)]/40'
+                  )}
+                  aria-pressed={kind === 'free'}
+                >
+                  Libre
+                  <span
+                    className={cn(
+                      'block text-[10px] font-medium mt-0.5',
+                      kind === 'free' ? 'text-white/80' : 'text-zinc-500'
+                    )}
+                  >
+                    Solo acumular y mantener racha
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={cn(
+                'grid grid-cols-1 gap-4',
+                kind === 'free' ? 'md:grid-cols-2' : 'md:grid-cols-3'
+              )}
+            >
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
                   Nombre
@@ -351,20 +424,56 @@ export const SavingsGoalsSection: React.FC = () => {
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ej. Viaje a Japón"
+                  placeholder={kind === 'free' ? 'Ej. Mi ahorro general' : 'Ej. Viaje a Japón'}
                   className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[var(--color-action)]"
                 />
               </div>
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
-                  Monto objetivo
-                </label>
-                <div className="flex items-stretch overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 focus-within:border-[var(--color-action)] focus-within:ring-2 focus-within:ring-[var(--color-action)]/20 transition-all">
-                  <div className="relative flex w-[5.5rem] shrink-0 items-center border-r border-zinc-200 bg-white/70">
+              {kind === 'goal' && (
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                    Monto objetivo
+                  </label>
+                  <div className="flex items-stretch overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 focus-within:border-[var(--color-action)] focus-within:ring-2 focus-within:ring-[var(--color-action)]/20 transition-all">
+                    <div className="relative flex w-[5.5rem] shrink-0 items-center border-r border-zinc-200 bg-white/70">
+                      <select
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                        className="h-full w-full appearance-none bg-transparent pl-3 pr-6 py-2.5 text-sm font-medium uppercase tracking-tight text-zinc-900 focus:outline-none cursor-pointer"
+                      >
+                        {CURRENCIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown
+                        size={14}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="any"
+                      value={targetAmount}
+                      onChange={(e) => setTargetAmount(e.target.value)}
+                      placeholder="5000"
+                      className="flex-1 w-full min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none num"
+                    />
+                  </div>
+                </div>
+              )}
+              {kind === 'free' && (
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
+                    Moneda
+                  </label>
+                  <div className="relative">
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="h-full w-full appearance-none bg-transparent pl-3 pr-6 py-2.5 text-sm font-medium uppercase tracking-tight text-zinc-900 focus:outline-none cursor-pointer"
+                      className="w-full appearance-none bg-zinc-50 border border-zinc-200 rounded-xl px-4 pr-9 py-2.5 text-sm font-medium uppercase tracking-tight text-zinc-900 focus:outline-none focus:border-[var(--color-action)] cursor-pointer"
                     >
                       {CURRENCIES.map((c) => (
                         <option key={c} value={c}>
@@ -374,21 +483,11 @@ export const SavingsGoalsSection: React.FC = () => {
                     </select>
                     <ChevronDown
                       size={14}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
                     />
                   </div>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    step="any"
-                    value={targetAmount}
-                    onChange={(e) => setTargetAmount(e.target.value)}
-                    placeholder="5000"
-                    className="flex-1 w-full min-w-0 bg-transparent px-3 py-2.5 text-sm outline-none num"
-                  />
                 </div>
-              </div>
+              )}
               <div>
                 <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-2">
                   {isEditing ? 'Acumulado actual' : 'Ya tienes (opcional)'}
@@ -503,11 +602,13 @@ export const SavingsGoalsSection: React.FC = () => {
                 streak={streak}
                 fallbackCurrency={settings.currency}
                 isContributing={isContributing}
+                contributionMode={contributionMode}
                 contributionAmount={contributionAmount}
                 contributionError={contributionError}
                 contributing={contributing}
                 isDeleting={isDeleting}
-                onContributeOpen={() => openContribute(goal.id)}
+                onContributeOpen={() => openContribute(goal.id, 'add')}
+                onWithdrawOpen={() => openContribute(goal.id, 'withdraw')}
                 onContributeClose={closeContribute}
                 onContributionAmountChange={setContributionAmount}
                 onContributeSubmit={() => handleContribute(goal)}
@@ -616,7 +717,7 @@ const AggregateTile: React.FC<AggregateTileProps> = ({ label, primary, secondary
       <span className="text-[10px] font-bold uppercase tracking-[0.24em]">{label}</span>
     </div>
     <div className="mt-auto">
-      <p className="text-xl font-bold tracking-tight text-emerald-900 num tabular-nums leading-none">
+      <p className="text-xl font-bold tracking-tight text-[var(--color-action)] num tabular-nums leading-none">
         {primary}
       </p>
       <p className="text-[11px] text-zinc-500 mt-1.5">{secondary}</p>
@@ -629,11 +730,13 @@ interface GoalCardProps {
   streak?: GoalStreak;
   fallbackCurrency: string;
   isContributing: boolean;
+  contributionMode: 'add' | 'withdraw';
   contributionAmount: string;
   contributionError: string | null;
   contributing: boolean;
   isDeleting: boolean;
   onContributeOpen: () => void;
+  onWithdrawOpen: () => void;
   onContributeClose: () => void;
   onContributionAmountChange: (value: string) => void;
   onContributeSubmit: () => void;
@@ -649,11 +752,13 @@ const GoalCard: React.FC<GoalCardProps> = ({
   streak,
   fallbackCurrency,
   isContributing,
+  contributionMode,
   contributionAmount,
   contributionError,
   contributing,
   isDeleting,
   onContributeOpen,
+  onWithdrawOpen,
   onContributeClose,
   onContributionAmountChange,
   onContributeSubmit,
@@ -663,26 +768,41 @@ const GoalCard: React.FC<GoalCardProps> = ({
   onCadenceChange,
   onEdit,
 }) => {
-  const progress = Math.min(
-    100,
-    Math.round((goal.currentAmount / goal.targetAmount) * 100)
-  );
-  const isComplete = progress >= 100;
+  const isFree = (goal.kind ?? 'goal') === 'free';
+  // En metas libres no hay objetivo, así que no calculamos progreso ni
+  // remaining ni el estado "COMPLETA". El acumulado es el único hard data.
+  const target = !isFree ? goal.targetAmount ?? 0 : 0;
+  const progress = !isFree && target > 0
+    ? Math.min(100, Math.round((goal.currentAmount / target) * 100))
+    : 0;
+  const isComplete = !isFree && progress >= 100;
   const goalCurrency = goal.currency || fallbackCurrency;
   const cadence: StreakCadence = goal.streakCadence ?? 'monthly';
-  const remaining = Math.max(0, goal.targetAmount - goal.currentAmount);
+  const remaining = !isFree ? Math.max(0, target - goal.currentAmount) : 0;
 
+  // Estado mostrado en el eyebrow. Separamos "ACTIVA" (cumplió este periodo)
+  // de "EN RIESGO" (racha viva pero periodo en curso pendiente) para que el
+  // color no contradiga al texto. Las metas libres nunca son COMPLETA.
   const statusLabel = isComplete
     ? 'COMPLETA'
-    : streak && streak.current > 0
+    : streak && streak.inGrace
+    ? 'EN RIESGO'
+    : streak && streak.aportedThisPeriod
     ? 'ACTIVA'
+    : streak && streak.best > 0
+    ? 'PAUSADA'
     : 'EN PROGRESO';
 
   const statusTone = isComplete
-    ? 'text-emerald-700'
-    : streak && streak.current > 0
+    ? 'text-[var(--color-action)]'
+    : streak && streak.inGrace
     ? 'text-amber-700'
+    : streak && streak.aportedThisPeriod
+    ? 'text-[var(--color-action)]'
     : 'text-[#9d9687]';
+
+  const kindLabel = isFree ? 'Meta libre' : 'Meta';
+  const isWithdraw = contributionMode === 'withdraw';
 
   const cadenceLabels = CADENCE_LABELS[cadence];
 
@@ -694,7 +814,7 @@ const GoalCard: React.FC<GoalCardProps> = ({
       className={cn(
         'relative overflow-hidden rounded-[28px] border bg-white/70 glass-surface premium-shadow p-6 sm:p-7 transition-all duration-300',
         isComplete
-          ? 'border-emerald-300/60 hover:shadow-[0_24px_50px_rgba(45,90,39,0.12)]'
+          ? 'border-[var(--color-action)]/40 hover:shadow-[0_24px_50px_rgba(45,90,39,0.12)]'
           : 'border-zinc-200/70 hover:shadow-lg hover:-translate-y-0.5'
       )}
     >
@@ -706,13 +826,13 @@ const GoalCard: React.FC<GoalCardProps> = ({
             statusTone
           )}
         >
-          Meta · {statusLabel}
+          {kindLabel} · {statusLabel}
         </p>
         <div className="flex items-center gap-1">
           <button
             onClick={onEdit}
             aria-label="Editar meta"
-            className="p-2 rounded-xl text-zinc-400 hover:text-[var(--color-action)] hover:bg-emerald-50 transition-colors active:scale-95"
+            className="p-2 rounded-xl text-zinc-400 hover:text-[var(--color-action)] hover:bg-[var(--color-action)]/10 transition-colors active:scale-95"
           >
             <Pencil size={13} strokeWidth={2} />
           </button>
@@ -726,19 +846,21 @@ const GoalCard: React.FC<GoalCardProps> = ({
         </div>
       </div>
 
-      {/* Title + percentage */}
+      {/* Title + (percentage en metas con objetivo) */}
       <div className="flex items-end justify-between gap-3 mb-3">
-        <h3 className="text-lg sm:text-xl font-bold tracking-tight text-emerald-900 truncate min-w-0">
+        <h3 className="text-lg sm:text-xl font-bold tracking-tight text-[var(--color-action)] truncate min-w-0">
           {goal.title}
         </h3>
-        <span
-          className={cn(
-            'text-3xl font-bold num leading-none tabular-nums shrink-0',
-            isComplete ? 'text-emerald-700' : 'text-[#4b5741]'
-          )}
-        >
-          {progress}%
-        </span>
+        {!isFree && (
+          <span
+            className={cn(
+              'text-3xl font-bold num leading-none tabular-nums shrink-0',
+              isComplete ? 'text-[var(--color-action)]' : 'text-[#4b5741]'
+            )}
+          >
+            {progress}%
+          </span>
+        )}
       </div>
 
       {/* Commitment chip OR free-aporte hint */}
@@ -756,23 +878,25 @@ const GoalCard: React.FC<GoalCardProps> = ({
         )}
       </div>
 
-      {/* Progress bar */}
-      <div className="h-2 rounded-full bg-[#f3f1ea] overflow-hidden mb-5 border border-[#efeadd]">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-          className={cn(
-            'h-full rounded-full',
-            isComplete
-              ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
-              : 'bg-gradient-to-r from-[#2d5a27] to-[#75b156]'
-          )}
-        />
-      </div>
+      {/* Progress bar — solo metas con objetivo */}
+      {!isFree && (
+        <div className="h-2 rounded-full bg-[#f3f1ea] overflow-hidden mb-5 border border-[#efeadd]">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            className={cn(
+              'h-full rounded-full',
+              isComplete
+                ? 'bg-gradient-to-r from-[#2d5a27] to-[#75b156]'
+                : 'bg-gradient-to-r from-[#2d5a27] to-[#75b156]'
+            )}
+          />
+        </div>
+      )}
 
-      {/* Amounts grid */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
+      {/* Amounts — en libres mostramos solo Acumulado a full ancho */}
+      <div className={cn('mb-5', isFree ? '' : 'grid grid-cols-2 gap-4')}>
         <div>
           <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9d9687]/70 mb-1">
             Acumulado
@@ -781,16 +905,18 @@ const GoalCard: React.FC<GoalCardProps> = ({
             {formatCurrency(goal.currentAmount, goalCurrency)}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9d9687]/70 mb-1">
-            {isComplete ? 'Lograste' : 'Faltan'}
-          </p>
-          <p className="text-[15px] font-semibold text-[#7c7361] num tabular-nums leading-tight">
-            {isComplete
-              ? formatCurrency(goal.targetAmount, goalCurrency)
-              : formatCurrency(remaining, goalCurrency)}
-          </p>
-        </div>
+        {!isFree && (
+          <div className="text-right">
+            <p className="text-[9px] font-bold uppercase tracking-[0.24em] text-[#9d9687]/70 mb-1">
+              {isComplete ? 'Lograste' : 'Faltan'}
+            </p>
+            <p className="text-[15px] font-semibold text-[#7c7361] num tabular-nums leading-tight">
+              {isComplete
+                ? formatCurrency(target, goalCurrency)
+                : formatCurrency(remaining, goalCurrency)}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Streak / period progress */}
@@ -827,21 +953,37 @@ const GoalCard: React.FC<GoalCardProps> = ({
         </div>
       </div>
 
-      {/* Aportar action */}
-      {!isComplete && !isContributing && !isDeleting && (
-        <button
-          onClick={onContributeOpen}
-          className="mt-5 w-full inline-flex items-center justify-center gap-2 bg-[var(--color-action)] text-white py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] hover:bg-[var(--color-action-hover)] transition-all shadow-[0_8px_20px_rgba(45,90,39,0.18)] active:scale-[0.98]"
-        >
-          <Plus size={14} strokeWidth={2.5} />
-          Aportar
-        </button>
-      )}
-
-      {isComplete && (
-        <div className="mt-5 inline-flex items-center justify-center gap-2 w-full bg-emerald-50 text-emerald-800 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] border border-emerald-200">
-          <Sparkles size={14} strokeWidth={2.5} />
-          Meta lograda
+      {/* Acciones: aportar / retirar */}
+      {!isContributing && !isDeleting && (
+        <div className="mt-5 space-y-3">
+          {isComplete && (
+            <div className="inline-flex items-center justify-center gap-2 w-full bg-[var(--color-action)]/10 text-[var(--color-action)] py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] border border-[var(--color-action)]/20">
+              <Sparkles size={14} strokeWidth={2.5} />
+              Meta lograda
+            </div>
+          )}
+          {(!isComplete || goal.currentAmount > 0) && (
+            <div className="flex gap-2">
+              {!isComplete && (
+                <button
+                  onClick={onContributeOpen}
+                  className="flex-[2] inline-flex items-center justify-center gap-2 bg-[var(--color-action)] text-white py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] hover:bg-[var(--color-action-hover)] transition-all shadow-[0_8px_20px_rgba(45,90,39,0.18)] active:scale-[0.98]"
+                >
+                  <Plus size={14} strokeWidth={2.5} />
+                  Aportar
+                </button>
+              )}
+              {goal.currentAmount > 0 && (
+                <button
+                  onClick={onWithdrawOpen}
+                  className="flex-1 inline-flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-600 py-3 rounded-2xl text-xs font-bold uppercase tracking-[0.22em] hover:bg-zinc-50 transition-all active:scale-[0.98]"
+                >
+                  <Minus size={14} strokeWidth={2.5} />
+                  Retirar
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -855,12 +997,22 @@ const GoalCard: React.FC<GoalCardProps> = ({
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-[var(--color-action)]/30 bg-[#f6f9f4] p-4">
+            <div
+              className={cn(
+                'rounded-2xl border p-4',
+                isWithdraw
+                  ? 'border-zinc-300 bg-zinc-50'
+                  : 'border-[var(--color-action)]/30 bg-[#f6f9f4]'
+              )}
+            >
               <label
                 htmlFor={`contribute-${goal.id}`}
-                className="block text-[9px] font-bold uppercase tracking-[0.24em] text-[var(--color-action)] mb-2"
+                className={cn(
+                  'block text-[9px] font-bold uppercase tracking-[0.24em] mb-2',
+                  isWithdraw ? 'text-zinc-600' : 'text-[var(--color-action)]'
+                )}
               >
-                ¿Cuánto aportas hoy?
+                {isWithdraw ? '¿Cuánto retiras?' : '¿Cuánto aportas hoy?'}
               </label>
               <div className="relative">
                 <span
@@ -900,10 +1052,19 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 <button
                   onClick={onContributeSubmit}
                   disabled={contributing}
-                  className="flex-[1.6] inline-flex items-center justify-center gap-1.5 bg-[var(--color-action)] text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[var(--color-action-hover)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
+                  className={cn(
+                    'flex-[1.6] inline-flex items-center justify-center gap-1.5 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-60 disabled:cursor-not-allowed active:scale-95',
+                    isWithdraw
+                      ? 'bg-zinc-800 hover:bg-zinc-900'
+                      : 'bg-[var(--color-action)] hover:bg-[var(--color-action-hover)]'
+                  )}
                 >
-                  <Check size={13} strokeWidth={2.5} />
-                  {contributing ? 'Guardando…' : 'Confirmar aporte'}
+                  {isWithdraw ? <Minus size={13} strokeWidth={2.5} /> : <Check size={13} strokeWidth={2.5} />}
+                  {contributing
+                    ? 'Guardando…'
+                    : isWithdraw
+                    ? 'Confirmar retiro'
+                    : 'Confirmar aporte'}
                 </button>
               </div>
               {contributionError && (
@@ -912,8 +1073,9 @@ const GoalCard: React.FC<GoalCardProps> = ({
                 </p>
               )}
               <p className="mt-2 text-[10px] text-[#7c7361]/80 leading-relaxed">
-                Se registrará como un gasto categoría &quot;Metas&quot; ligado a esta meta.
-                Sumará al acumulado y a la racha.
+                {isWithdraw
+                  ? 'Se registrará como un ingreso categoría "Metas". Bajará el acumulado de la meta.'
+                  : 'Se registrará como un gasto categoría "Metas" ligado a esta meta. Sumará al acumulado y a la racha.'}
               </p>
             </div>
           </motion.div>
@@ -972,6 +1134,7 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
     current,
     best,
     aportedThisPeriod,
+    inGrace,
     cadence,
     commitmentAmount,
     currentPeriodAmount,
@@ -993,10 +1156,27 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
     );
   }
 
+  // Aportó pero aún no cumple el compromiso, y no hay historial. Antes caía en
+  // el branch "racha rota" y se renderizaba "Mejor racha: 0 meses", que es
+  // semánticamente vacío. Mostramos el progreso real con copy de arranque.
+  if (current === 0 && best === 0 && commitmentAmount && currentPeriodAmount > 0) {
+    return (
+      <PeriodProgressHint
+        current={currentPeriodAmount}
+        commitment={commitmentAmount}
+        remaining={currentPeriodRemaining}
+        currency={goalCurrency}
+        label={`Tu primer ${labels.singular}`}
+        met={false}
+        firstPeriod
+      />
+    );
+  }
+
   // Racha activa
   if (current > 0) {
     const tone = aportedThisPeriod
-      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+      ? 'bg-[var(--color-action)]/10 text-[var(--color-action)] border-[var(--color-action)]/20'
       : 'bg-amber-50 text-amber-800 border-amber-200';
     const unit = current === 1 ? labels.singular : labels.plural;
     return (
@@ -1010,6 +1190,11 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
           >
             <Flame size={12} strokeWidth={2.5} />
             {current} {unit} {labels.consecutiveAdjective}
+            {inGrace && (
+              <span className="font-semibold opacity-80">
+                · {labels.thisPeriod} pendiente
+              </span>
+            )}
           </span>
           {best > current && (
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
@@ -1064,6 +1249,8 @@ interface PeriodProgressHintProps {
   currency: string;
   label: string;
   met: boolean;
+  /** Si true, el copy del estado "no cumplido" habla de arrancar la racha en vez de mantenerla. */
+  firstPeriod?: boolean;
 }
 
 const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
@@ -1073,20 +1260,21 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
   currency,
   label,
   met,
+  firstPeriod = false,
 }) => {
   const pct = Math.min(100, Math.round((current / commitment) * 100));
   return (
     <div
       className={cn(
         'rounded-xl border px-3 py-2',
-        met ? 'bg-emerald-50/60 border-emerald-200/70' : 'bg-[#fbfaf6] border-[#efe8da]'
+        met ? 'bg-[var(--color-action)]/8 border-[var(--color-action)]/25' : 'bg-[#fbfaf6] border-[#efe8da]'
       )}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span
           className={cn(
             'text-[10px] font-bold uppercase tracking-wider',
-            met ? 'text-emerald-700' : 'text-[#7c7361]'
+            met ? 'text-[var(--color-action)]' : 'text-[#7c7361]'
           )}
         >
           {label}
@@ -1094,7 +1282,7 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
         <span
           className={cn(
             'text-[11px] font-bold num tabular-nums',
-            met ? 'text-emerald-800' : 'text-[#4b5741]'
+            met ? 'text-[var(--color-action)]' : 'text-[#4b5741]'
           )}
         >
           {formatCurrency(current, currency)} / {formatCurrency(commitment, currency)}
@@ -1103,7 +1291,7 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
       <div
         className={cn(
           'h-1 rounded-full overflow-hidden mb-1',
-          met ? 'bg-emerald-100' : 'bg-[#efeadd]'
+          met ? 'bg-[var(--color-action)]/15' : 'bg-[#efeadd]'
         )}
       >
         <motion.div
@@ -1117,18 +1305,19 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
         />
       </div>
       {met ? (
-        <p className="text-[10px] font-semibold text-emerald-700 inline-flex items-center gap-1">
+        <p className="text-[10px] font-semibold text-[var(--color-action)] inline-flex items-center gap-1">
           <Check size={10} strokeWidth={3} />
           Compromiso cumplido
           {current > commitment && (
-            <span className="text-emerald-600/70 ml-1">
+            <span className="text-[var(--color-action)]/70 ml-1">
               (+{formatCurrency(current - commitment, currency)})
             </span>
           )}
         </p>
       ) : (
         <p className="text-[10px] font-medium text-amber-700">
-          Falta {formatCurrency(remaining, currency)} para mantener la racha.
+          Falta {formatCurrency(remaining, currency)} para{' '}
+          {firstPeriod ? 'arrancar la racha' : 'mantener la racha'}.
         </p>
       )}
     </div>
@@ -1167,16 +1356,28 @@ const CadenceChangeModal: React.FC<CadenceChangeModalProps> = ({ meta, onCancel,
             ¿Confirmar cambio a {CADENCE_LABELS[meta.next].selectorLabel.toLowerCase()}?
           </h3>
           <p className="text-sm text-zinc-600 leading-relaxed mb-5">
-            Tu compromiso de{' '}
-            <span className="font-bold num">
-              {formatCurrency(
-                meta.goal.commitmentAmount ?? 0,
-                meta.goal.currency || 'DOP'
-              )}
-            </span>{' '}
-            pasa a aplicarse {CADENCE_LABELS[meta.next].perPeriod} (antes era{' '}
-            {CADENCE_LABELS[meta.goal.streakCadence ?? 'monthly'].perPeriod}). La racha
-            se recalcula con el nuevo ritmo y puede cambiar.
+            {meta.goal.commitmentAmount && meta.goal.commitmentAmount > 0 ? (
+              <>
+                Tu compromiso de{' '}
+                <span className="font-bold num">
+                  {formatCurrency(
+                    meta.goal.commitmentAmount,
+                    meta.goal.currency || 'DOP'
+                  )}
+                </span>{' '}
+                pasa a aplicarse {CADENCE_LABELS[meta.next].perPeriod} (antes era{' '}
+                {CADENCE_LABELS[meta.goal.streakCadence ?? 'monthly'].perPeriod}).
+                Tu racha se recalcula con el nuevo ritmo y puede cambiar.
+              </>
+            ) : (
+              <>
+                La racha pasa de medirse{' '}
+                {CADENCE_LABELS[meta.goal.streakCadence ?? 'monthly'].perPeriod} a{' '}
+                {CADENCE_LABELS[meta.next].perPeriod}. Tus aportes se reagrupan en
+                ventanas distintas, así que la racha actual y la mejor pueden
+                cambiar.
+              </>
+            )}
           </p>
           <div className="flex justify-end gap-2">
             <button
@@ -1207,7 +1408,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ onCreate }) => (
     <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#f6f1e8] text-[#9d9687] mb-5 border border-[#efeadd]">
       <Target size={28} strokeWidth={1.75} />
     </div>
-    <h3 className="text-base font-bold text-emerald-900 tracking-tight">
+    <h3 className="text-base font-bold text-[var(--color-action)] tracking-tight">
       Aún no tienes metas
     </h3>
     <p className="text-sm text-zinc-500 mt-1.5 max-w-[320px] mx-auto leading-relaxed">

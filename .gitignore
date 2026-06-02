@@ -14,3 +14,6 @@ firebase-applet-config.json
 # Se regeneran cuando se necesitan, no son fuente de verdad.
 firestore-rules-*.zip
 DEPLOY-RULES.md
+
+# Contexto local de Claude Code, no versionar.
+CLAUDE.md

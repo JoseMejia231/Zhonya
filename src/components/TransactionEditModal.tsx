@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Transaction, TransactionType } from '../types';
-import { Plus, Minus, Check, ChevronDown, X } from 'lucide-react';
-import { cn } from '../utils';
+import { Plus, Minus, Check, ChevronDown, X, Target } from 'lucide-react';
+import { cn, formatCurrency } from '../utils';
 import { success } from '../utils/haptics';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, parseISO } from 'date-fns';
@@ -22,7 +22,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { updateTransaction, addTransaction, settings, transactions } = useFinance();
+  const { updateTransaction, addTransaction, settings, transactions, savingsGoals } = useFinance();
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
@@ -30,6 +30,7 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [currency, setCurrency] = useState<string>(settings.currency || 'DOP');
+  const [selectedGoalId, setSelectedGoalId] = useState<string>('');
   const [justSaved, setJustSaved] = useState(false);
 
   useEffect(() => {
@@ -40,7 +41,11 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
       setDescription(transaction.description || '');
       // Cargar la moneda guardada de esta tx; fallback al default si es legacy.
       setCurrency(transaction.currency || settings.currency || 'DOP');
-      
+      // Hidratar la meta vinculada si la tx ya tenía una. Si no, preseleccionar
+      // la primera disponible para que el dropdown no aparezca vacío al cambiar
+      // la categoría a "Metas".
+      setSelectedGoalId(transaction.goalId || (savingsGoals[0]?.id ?? ''));
+
       if (mode === 'edit') {
         // Formato local YYYY-MM-DD para el input type="date"
         try {
@@ -111,6 +116,9 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
         targetDate = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds());
     }
 
+    const linkedGoalId =
+      category === 'Metas' && selectedGoalId ? selectedGoalId : undefined;
+
     if (mode === 'edit') {
       await updateTransaction(transaction.id, {
         amount: Number(amount),
@@ -119,16 +127,23 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
         description,
         date: targetDate.toISOString(),
         currency,
+        // Pasamos goalId explícito (puede ser undefined para desvincular). El
+        // context detecta 'goalId' in updates y usa deleteField si toca.
+        goalId: linkedGoalId,
       });
     } else {
-      await addTransaction({
-        amount: Number(amount),
-        type,
-        category,
-        description,
-        date: targetDate.toISOString(),
-        currency,
-      });
+      await addTransaction(
+        {
+          amount: Number(amount),
+          type,
+          category,
+          description,
+          date: targetDate.toISOString(),
+          currency,
+          ...(linkedGoalId ? { goalId: linkedGoalId } : {}),
+        },
+        { syncGoalBalance: Boolean(linkedGoalId) }
+      );
     }
 
     setJustSaved(true);
@@ -297,6 +312,47 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({
                     })}
                   </div>
                 </div>
+
+                {category === 'Metas' && savingsGoals.length > 0 && (
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 ml-1 mb-2 flex items-center gap-1.5">
+                      <Target size={11} strokeWidth={2.5} />
+                      Meta vinculada
+                    </label>
+                    <div className="grid grid-cols-1 gap-1.5 max-h-[140px] overflow-y-auto pr-1">
+                      {savingsGoals.map((g) => {
+                        const isSelected = selectedGoalId === g.id;
+                        const isFreeGoal = (g.kind ?? 'goal') === 'free' || !g.targetAmount;
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => setSelectedGoalId(g.id)}
+                            className={cn(
+                              'flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-left transition-all cursor-pointer',
+                              isSelected
+                                ? 'border-emerald-500 bg-emerald-50/40 text-emerald-900'
+                                : 'border-zinc-200 bg-white hover:border-zinc-300 text-zinc-700'
+                            )}
+                          >
+                            <span className="text-xs font-semibold truncate">{g.title}</span>
+                            <span className="text-[10px] font-bold num tabular-nums text-zinc-500 shrink-0">
+                              {isFreeGoal
+                                ? formatCurrency(g.currentAmount, g.currency || settings.currency)
+                                : `${formatCurrency(g.currentAmount, g.currency || settings.currency)} / ${formatCurrency(g.targetAmount as number, g.currency || settings.currency)}`}
+                              {isSelected && (
+                                <Check size={11} strokeWidth={3} className="inline ml-1.5 text-emerald-600" />
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1.5 text-[10px] text-zinc-500">
+                      Cambiar de categoría a otra distinta de "Metas" desvincula la meta.
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>

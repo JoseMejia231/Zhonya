@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Plus, X, Trash2, AlertTriangle, Check, Tag } from 'lucide-react';
-import { useFinance } from '../context/FinanceContext';
+import { Plus, X, Trash2, AlertTriangle, Check, Tag, RotateCcw } from 'lucide-react';
+import {
+  useFinance,
+  DEFAULT_INCOME_CATEGORIES,
+  DEFAULT_EXPENSE_CATEGORIES,
+} from '../context/FinanceContext';
 import { cn } from '../utils';
 
 interface Props {
@@ -13,6 +17,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
   const { settings, updateSettings, transactions } = useFinance();
   const [newCat, setNewCat] = useState('');
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [pendingRestore, setPendingRestore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'income' | 'expense'>('expense');
@@ -30,6 +35,7 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
   useEffect(() => {
     if (!open) {
       setPendingDelete(null);
+      setPendingRestore(false);
       setError(null);
       setNewCat('');
       return;
@@ -64,6 +70,19 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
       updateSettings({ expenseCategories: [...expenseCats, name] });
     }
     setNewCat('');
+    setError(null);
+  };
+
+  // Reemplaza ambas listas con los defaults. Las transacciones existentes que
+  // usen categorías custom no se borran; mantienen su category aunque ya no
+  // aparezca en el picker (mismo trato que cuando borras una categoría a mano).
+  const handleRestoreDefaults = () => {
+    updateSettings({
+      incomeCategories: DEFAULT_INCOME_CATEGORIES,
+      expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
+    });
+    setPendingRestore(false);
+    setPendingDelete(null);
     setError(null);
   };
 
@@ -277,6 +296,51 @@ export const CategoryManager: React.FC<Props> = ({ open, onClose }) => {
                     pero la categoría no aparecerá en el formulario.
                   </span>
                 </motion.div>
+              )}
+            </div>
+
+            {/* Footer: restaurar por defecto */}
+            <div className="border-t border-zinc-100 p-3.5">
+              {pendingRestore ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col gap-2"
+                >
+                  <p className="text-[11px] text-zinc-600 leading-relaxed">
+                    Esto reemplaza tus dos listas con las categorías originales. Las
+                    transacciones ya existentes mantienen su categoría aunque no
+                    aparezca en el picker.
+                  </p>
+                  <div className="flex gap-1.5 justify-end">
+                    <button
+                      onClick={() => setPendingRestore(false)}
+                      className="px-3 py-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 rounded-lg hover:bg-zinc-50 transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleRestoreDefaults}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-zinc-900 text-white text-xs font-semibold rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
+                    >
+                      <Check size={12} />
+                      Restaurar
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingRestore(true);
+                    setPendingDelete(null);
+                    setError(null);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-widest text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50 rounded-lg transition-colors cursor-pointer"
+                >
+                  <RotateCcw size={12} />
+                  Restaurar categorías por defecto
+                </button>
               )}
             </div>
           </motion.div>

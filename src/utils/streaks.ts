@@ -8,6 +8,12 @@ export interface GoalStreak {
   best: number;
   /** Si el usuario ya cumplió la condición del periodo en curso. */
   aportedThisPeriod: boolean;
+  /**
+   * True cuando hay racha viva (`current > 0`) pero el periodo actual todavía
+   * no cumple la condición. La racha sigue contando gracias al periodo de
+   * gracia, pero la UI debe comunicar que está pendiente / en riesgo.
+   */
+  inGrace: boolean;
   /** Total de periodos distintos que cumplieron la condición. */
   totalPeriodsWithAporte: number;
   /** Cadencia usada para el cálculo (para que la UI muestre el texto correcto). */
@@ -103,6 +109,7 @@ export function computeGoalStreak(
       current: 0,
       best: 0,
       aportedThisPeriod: false,
+      inGrace: false,
       totalPeriodsWithAporte: 0,
       cadence,
       currentPeriodAmount,
@@ -122,6 +129,10 @@ export function computeGoalStreak(
     cursor--;
   }
 
+  // Estamos en gracia cuando la racha sigue viva pero el periodo en curso aún
+  // no cumple. La UI usa esto para señalar "en riesgo" sin perder el contador.
+  const inGrace = current > 0 && !aportedThisPeriod;
+
   const sorted = [...periodsMet].sort((a, b) => a - b);
   let best = 0;
   let run = 0;
@@ -136,6 +147,7 @@ export function computeGoalStreak(
     current,
     best,
     aportedThisPeriod,
+    inGrace,
     totalPeriodsWithAporte: periodsMet.size,
     cadence,
     currentPeriodAmount,
