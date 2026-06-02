@@ -12,10 +12,22 @@ import {
   Sparkles,
   Pencil,
   TrendingUp,
+  Trophy,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatCurrency, cn } from '../utils';
-import { CADENCE_LABELS, computeGoalStreak, type GoalStreak } from '../utils/streaks';
+import {
+  CADENCE_LABELS,
+  computeGoalStreak,
+  convertStreakCount,
+  periodIdx,
+  type GoalStreak,
+} from '../utils/streaks';
+import {
+  getStreakBaseline,
+  setStreakBaseline,
+  clearStreakBaseline,
+} from '../utils/localPrefs';
 import type { SavingsGoal, SavingsGoalKind, StreakCadence } from '../types';
 
 const CURRENCIES = ['USD', 'EUR', 'DOP', 'MXN'] as const;
@@ -39,6 +51,7 @@ export const SavingsGoalsSection: React.FC = () => {
     settings,
     transactions,
     addTransaction,
+    user,
   } = useFinance();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -67,18 +80,21 @@ export const SavingsGoalsSection: React.FC = () => {
 
   // Mapa goalId → racha. Se recalcula cuando cambian transacciones o metas,
   // no en cada keystroke del formulario. Respeta cadencia y compromiso.
+  // Lee también el baseline (convertido al cambiar cadencia) desde localStorage.
   const streaksByGoal = useMemo(() => {
     const map = new Map<string, GoalStreak>();
     for (const g of savingsGoals) {
+      const baseline = user ? getStreakBaseline(user.uid, g.id) : null;
       map.set(
         g.id,
         computeGoalStreak(transactions, g.id, g.streakCadence ?? 'monthly', {
           commitmentAmount: g.commitmentAmount,
+          baseline,
         })
       );
     }
     return map;
-  }, [transactions, savingsGoals]);
+  }, [transactions, savingsGoals, user?.uid]);
 
   // Resumen agregado del header: # metas activas, total acumulado por moneda,
   // compromiso mensual total normalizado. Las metas libres no se "completan",
@@ -229,7 +245,30 @@ export const SavingsGoalsSection: React.FC = () => {
       setPendingCadence(null);
       return;
     }
-    await upsertSavingsGoal({ ...goal, streakCadence: pendingCadence.next });
+    const oldCadence = goal.streakCadence ?? 'monthly';
+    const nextCadence = pendingCadence.next;
+    // Snapshot del streak en la cadencia VIEJA (incluye baseline previo si lo
+    // había, para encadenar conversiones — monthly→biweekly→weekly).
+    const previousStreak = streaksByGoal.get(goal.id);
+    if (user && previousStreak) {
+      const inheritedCurrent = convertStreakCount(previousStreak.current, oldCadence, nextCadence);
+      const inheritedBest = Math.max(
+        inheritedCurrent,
+        convertStreakCount(previousStreak.best, oldCadence, nextCadence)
+      );
+      if (inheritedCurrent > 0) {
+        setStreakBaseline(user.uid, goal.id, {
+          inheritedCurrent,
+          inheritedBest,
+          cadence: nextCadence,
+          asOfIdx: periodIdx(new Date(), nextCadence),
+        });
+      } else {
+        // Sin racha activa que convertir → limpiar baseline previo si quedaba.
+        clearStreakBaseline(user.uid, goal.id);
+      }
+    }
+    await upsertSavingsGoal({ ...goal, streakCadence: nextCadence });
     setPendingCadence(null);
   };
 
@@ -1123,6 +1162,51 @@ const GoalCard: React.FC<GoalCardProps> = ({
   );
 };
 
+/**
+ * Convierte el `currentPeriodEndsAt` del streak a un texto humano del tipo
+ * "cierra en 3 días" / "cierra en 7h". Se llama en render, así que no hace
+ * falta tick reactivo: el card se rerenderiza cuando cambian otras props.
+ */
+const formatPeriodCountdown = (endsAt: number, now: number = Date.now()) => {
+  const ms = endsAt - now;
+  if (ms <= 0) return 'cierra hoy';
+  const days = Math.floor(ms / 86_400_000);
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000);
+  if (days >= 1) return `cierra en ${days} ${days === 1 ? 'día' : 'días'}`;
+  if (hours >= 1) return `cierra en ${hours}h`;
+  return 'cierra en <1h';
+};
+
+/**
+ * Mini-timeline de los últimos N periodos. Cada punto = un periodo; lleno
+ * verde = cumplido, vacío = no cumplido. El último punto (periodo en curso)
+ * lleva un anillo para distinguirse.
+ */
+const RecentPeriodsTimeline: React.FC<{ periods: boolean[] }> = ({ periods }) => (
+  <div className="flex items-center gap-1" aria-label="Periodos recientes">
+    {periods.map((met, i) => {
+      const isCurrent = i === periods.length - 1;
+      return (
+        <span
+          key={i}
+          aria-hidden
+          className={cn(
+            'rounded-full transition-colors',
+            isCurrent ? 'w-2.5 h-2.5 ring-2 ring-offset-1' : 'w-2 h-2',
+            met
+              ? 'bg-emerald-500'
+              : isCurrent
+              ? 'bg-amber-100 border border-amber-400'
+              : 'bg-zinc-200',
+            isCurrent && met && 'ring-emerald-200',
+            isCurrent && !met && 'ring-amber-100'
+          )}
+        />
+      );
+    })}
+  </div>
+);
+
 interface StreakBadgeProps {
   streak: GoalStreak;
   goalCurrency: string;
@@ -1139,8 +1223,12 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
     commitmentAmount,
     currentPeriodAmount,
     currentPeriodRemaining,
+    recentPeriods,
+    currentPeriodEndsAt,
+    milestoneReached,
   } = streak;
   const labels = CADENCE_LABELS[cadence];
+  const countdown = formatPeriodCountdown(currentPeriodEndsAt);
 
   if (isComplete) return null;
 
@@ -1169,6 +1257,7 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
         label={`Tu primer ${labels.singular}`}
         met={false}
         firstPeriod
+        countdown={countdown}
       />
     );
   }
@@ -1196,12 +1285,19 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
               </span>
             )}
           </span>
+          {milestoneReached !== null && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+              <Trophy size={10} strokeWidth={2.5} />
+              ¡Hito {milestoneReached}!
+            </span>
+          )}
           {best > current && (
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Mejor: {best}
             </span>
           )}
         </div>
+        <RecentPeriodsTimeline periods={recentPeriods} />
         {commitmentAmount ? (
           <PeriodProgressHint
             current={currentPeriodAmount}
@@ -1210,9 +1306,12 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
             currency={goalCurrency}
             label={labels.thisPeriod}
             met={aportedThisPeriod}
+            countdown={countdown}
           />
         ) : !aportedThisPeriod ? (
-          <p className="text-[10px] font-semibold text-amber-700">{labels.pendingHint}</p>
+          <p className="text-[10px] font-semibold text-amber-700">
+            {labels.pendingHint} · <span className="font-bold">{countdown}</span>
+          </p>
         ) : null}
       </div>
     );
@@ -1228,6 +1327,7 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
           Mejor racha: {best} {recordUnit}
         </span>
       </div>
+      <RecentPeriodsTimeline periods={recentPeriods} />
       {commitmentAmount && (
         <PeriodProgressHint
           current={currentPeriodAmount}
@@ -1236,6 +1336,7 @@ const StreakBadge: React.FC<StreakBadgeProps> = ({ streak, goalCurrency, isCompl
           currency={goalCurrency}
           label={labels.thisPeriod}
           met={currentPeriodAmount >= commitmentAmount}
+          countdown={countdown}
         />
       )}
     </div>
@@ -1251,6 +1352,8 @@ interface PeriodProgressHintProps {
   met: boolean;
   /** Si true, el copy del estado "no cumplido" habla de arrancar la racha en vez de mantenerla. */
   firstPeriod?: boolean;
+  /** Texto humano del countdown al cierre del periodo (ej. "cierra en 3 días"). */
+  countdown?: string;
 }
 
 const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
@@ -1261,6 +1364,7 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
   label,
   met,
   firstPeriod = false,
+  countdown,
 }) => {
   const pct = Math.min(100, Math.round((current / commitment) * 100));
   return (
@@ -1273,15 +1377,20 @@ const PeriodProgressHint: React.FC<PeriodProgressHintProps> = ({
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <span
           className={cn(
-            'text-[10px] font-bold uppercase tracking-wider',
+            'text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 min-w-0',
             met ? 'text-[var(--color-action)]' : 'text-[#7c7361]'
           )}
         >
-          {label}
+          <span className="truncate">{label}</span>
+          {countdown && (
+            <span className="text-[9px] font-semibold normal-case tracking-normal opacity-70 shrink-0">
+              · {countdown}
+            </span>
+          )}
         </span>
         <span
           className={cn(
-            'text-[11px] font-bold num tabular-nums',
+            'text-[11px] font-bold num tabular-nums shrink-0',
             met ? 'text-[var(--color-action)]' : 'text-[#4b5741]'
           )}
         >

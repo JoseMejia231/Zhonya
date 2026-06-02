@@ -25,7 +25,11 @@ import {
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
-import { localKeysForUser } from '../utils/localPrefs';
+import {
+  localKeysForUser,
+  clearStreakBaseline,
+  clearAllStreakBaselines,
+} from '../utils/localPrefs';
 import { isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
 
 type FinanceAction =
@@ -901,6 +905,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'savingsGoals', id));
+      clearStreakBaseline(user.uid, id);
     } catch (err) {
       showError('No se pudo eliminar la meta', err);
     }
@@ -927,6 +932,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
       for (const key of localKeysForUser(user.uid)) {
         try { localStorage.removeItem(key); } catch {}
       }
+      clearAllStreakBaselines(user.uid);
     } catch (err) {
       showError('No se pudieron borrar todos los datos', err);
       throw err;

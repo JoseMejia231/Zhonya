@@ -1,5 +1,12 @@
 import { parseISO, startOfWeek } from 'date-fns';
 import type { StreakCadence, Transaction } from '../types';
+import type { StreakBaseline } from './localPrefs';
+
+/** Cantidad de periodos recientes que devolvemos para la mini-timeline visual. */
+export const RECENT_PERIODS_WINDOW = 8;
+
+/** Hitos celebrables. Cruzar uno desbloquea un badge especial en la card. */
+export const STREAK_MILESTONES = [4, 12, 24, 52, 104] as const;
 
 export interface GoalStreak {
   /** Periodos consecutivos con aporte que llegan hasta el actual (o al anterior, en gracia). */
@@ -18,12 +25,40 @@ export interface GoalStreak {
   totalPeriodsWithAporte: number;
   /** Cadencia usada para el cálculo (para que la UI muestre el texto correcto). */
   cadence: StreakCadence;
-  /** Aporte total acumulado en el periodo actual (en la moneda del goal). */
+  /** Aporte NETO acumulado en el periodo actual (aportes − retiros). */
   currentPeriodAmount: number;
   /** Monto que faltaría en este periodo para cumplir el compromiso. 0 si no hay compromiso o ya se cumplió. */
   currentPeriodRemaining: number;
   /** Si la racha es por compromiso de monto, refleja el compromiso usado en el cálculo. */
   commitmentAmount: number | null;
+  /**
+   * Últimos `RECENT_PERIODS_WINDOW` periodos (cronológicos, último = actual).
+   * Cada entrada dice si ese periodo cumplió la condición. Sirve para pintar
+   * la mini-timeline en la card sin recalcular en la UI.
+   */
+  recentPeriods: boolean[];
+  /** Timestamp en el que termina el periodo actual (exclusivo). */
+  currentPeriodEndsAt: number;
+  /** Hito alcanzado por la racha actual, o null si current no coincide con ninguno. */
+  milestoneReached: number | null;
+}
+
+/**
+ * Calcula el instante (exclusivo) en el que termina el periodo actual según la
+ * cadencia. La UI lo usa para mostrar "cierra en N días/horas".
+ */
+function endOfCurrentPeriod(now: Date, cadence: StreakCadence): Date {
+  if (cadence === 'weekly') {
+    const monday = startOfWeek(now, { weekStartsOn: 1 });
+    return new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
+  }
+  if (cadence === 'biweekly') {
+    if (now.getDate() <= 15) {
+      return new Date(now.getFullYear(), now.getMonth(), 16);
+    }
+    return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
+  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
 }
 
 /**
@@ -37,7 +72,7 @@ export interface GoalStreak {
  *   común de nóminas en LATAM.
  * - monthly: año*12 + mes.
  */
-function periodIdx(date: Date, cadence: StreakCadence): number {
+export function periodIdx(date: Date, cadence: StreakCadence): number {
   if (cadence === 'weekly') {
     const monday = startOfWeek(date, { weekStartsOn: 1 });
     // Normalizamos a UTC midnight para que dos lunes consecutivos disten
@@ -54,7 +89,43 @@ function periodIdx(date: Date, cadence: StreakCadence): number {
 interface ComputeOptions {
   /** Si se pasa y es > 0, la racha cuenta solo periodos donde la suma de aportes lo iguala/supera. */
   commitmentAmount?: number;
+  /** Snapshot del streak convertido al cambiar cadencia. Mantiene la racha "viva" cuando se mueve a una cadencia más fina/gruesa. */
+  baseline?: StreakBaseline | null;
 }
+
+/**
+ * Pesos relativos entre cadencias. monthly ≈ 4 weekly, biweekly ≈ 2 weekly.
+ * Sirven para convertir el streak (en cantidad de periodos) entre cadencias
+ * cuando el usuario cambia el ritmo. monthly→weekly = ratio 4 (1 mes ≈ 4 semanas),
+ * weekly→monthly = ratio 0.25 (4 semanas ≈ 1 mes). Aproximación: el mes "real"
+ * tiene ≈4.33 semanas pero 4 da una conversión limpia y comprensible.
+ */
+const CADENCE_WEIGHT: Record<StreakCadence, number> = {
+  weekly: 1,
+  biweekly: 2,
+  monthly: 4,
+};
+
+/**
+ * Cuántas unidades de `to` equivalen a una unidad de `from`. Ej:
+ * cadenceRatio('monthly', 'biweekly') === 2 (1 mes ≈ 2 quincenas).
+ * cadenceRatio('weekly', 'monthly') === 0.25 (4 semanas ≈ 1 mes).
+ */
+export const cadenceRatio = (from: StreakCadence, to: StreakCadence): number =>
+  CADENCE_WEIGHT[from] / CADENCE_WEIGHT[to];
+
+/**
+ * Convierte un conteo de racha de una cadencia a otra, redondeando a entero.
+ * Devuelve 0 si el resultado es < 1 (no inflamos rachas vacías).
+ */
+export const convertStreakCount = (
+  count: number,
+  from: StreakCadence,
+  to: StreakCadence
+): number => {
+  if (count <= 0) return 0;
+  return Math.round(count * cadenceRatio(from, to));
+};
 
 /**
  * Calcula la racha de aportes a una meta a partir de las transacciones vinculadas
@@ -83,13 +154,18 @@ export function computeGoalStreak(
     ? options.commitmentAmount
     : null;
   const currentIdx = periodIdx(now, cadence);
+  const currentPeriodEndsAt = endOfCurrentPeriod(now, cadence).getTime();
 
-  // Suma de aportes por periodo. Permite evaluar "se cumplió el compromiso".
+  // Suma NETA por periodo: aportes (expense) suman, retiros (income) restan.
+  // Antes contábamos cualquier tx ligada como aporte; eso permitía gamear la
+  // racha haciendo aporte+retiro en el mismo periodo. Ahora el periodo cumple
+  // si el saldo neto del periodo iguala/supera el compromiso.
   const sumByPeriod = new Map<number, number>();
   for (const t of transactions) {
     if (t.goalId !== goalId) continue;
     const idx = periodIdx(parseISO(t.date), cadence);
-    sumByPeriod.set(idx, (sumByPeriod.get(idx) ?? 0) + t.amount);
+    const signed = t.type === 'expense' ? t.amount : -t.amount;
+    sumByPeriod.set(idx, (sumByPeriod.get(idx) ?? 0) + signed);
   }
 
   const periodsMet = new Set<number>();
@@ -99,15 +175,36 @@ export function computeGoalStreak(
     }
   }
 
+  // recentPeriods: ventana cronológica desde currentIdx - (N-1) hasta currentIdx.
+  // Última posición = periodo en curso, primera = más antigua.
+  const recentPeriods: boolean[] = [];
+  for (let i = RECENT_PERIODS_WINDOW - 1; i >= 0; i--) {
+    recentPeriods.push(periodsMet.has(currentIdx - i));
+  }
+
   const currentPeriodAmount = Math.round((sumByPeriod.get(currentIdx) ?? 0) * 100) / 100;
   const currentPeriodRemaining = commitment
     ? Math.max(0, Math.round((commitment - currentPeriodAmount) * 100) / 100)
     : 0;
 
   if (periodsMet.size === 0) {
+    // Caso especial: justo después de cambiar la cadencia, periodsMet podría
+    // estar vacío en la nueva cadencia (los aportes históricos quedaron en
+    // periodos no cumplidos por commitment, etc.). Si el baseline coincide con
+    // el periodo actual, lo mostramos como punto de partida del nuevo cómputo.
+    let baselineCurrent = 0;
+    let baselineBest = 0;
+    if (
+      options.baseline &&
+      options.baseline.cadence === cadence &&
+      currentIdx === options.baseline.asOfIdx
+    ) {
+      baselineCurrent = options.baseline.inheritedCurrent;
+      baselineBest = options.baseline.inheritedBest;
+    }
     return {
-      current: 0,
-      best: 0,
+      current: baselineCurrent,
+      best: baselineBest,
       aportedThisPeriod: false,
       inGrace: false,
       totalPeriodsWithAporte: 0,
@@ -115,6 +212,9 @@ export function computeGoalStreak(
       currentPeriodAmount,
       currentPeriodRemaining,
       commitmentAmount: commitment,
+      recentPeriods,
+      currentPeriodEndsAt,
+      milestoneReached: null,
     };
   }
 
@@ -143,9 +243,44 @@ export function computeGoalStreak(
     prev = idx;
   }
 
+  // Baseline: cuando el usuario cambia cadencia, el snapshot convertido se
+  // suma al cómputo vivo mientras la cadena post-cambio no se rompa. Si la
+  // cadena se rompe, el baseline se ignora (no contamina; queda en
+  // localStorage hasta que el siguiente cambio lo sobreescriba).
+  let displayedCurrent = current;
+  let displayedBest = best;
+  if (options.baseline && options.baseline.cadence === cadence) {
+    const { inheritedCurrent, inheritedBest, asOfIdx } = options.baseline;
+    const elapsed = currentIdx - asOfIdx;
+    if (elapsed >= 0) {
+      let chainHolds = true;
+      for (let i = asOfIdx + 1; i < currentIdx; i++) {
+        if (!periodsMet.has(i)) {
+          chainHolds = false;
+          break;
+        }
+      }
+      // El currentIdx debe estar cumplido o, en su defecto, estar en gracia
+      // (lo que implica que el currentIdx-1 sí está cumplido y current > 0).
+      if (chainHolds && currentIdx > asOfIdx) {
+        if (!periodsMet.has(currentIdx) && current === 0) chainHolds = false;
+      }
+      if (chainHolds) {
+        displayedCurrent = Math.max(current, inheritedCurrent + elapsed);
+        displayedBest = Math.max(best, inheritedBest + elapsed);
+      }
+    }
+  }
+
+  const milestoneReached = STREAK_MILESTONES.includes(
+    displayedCurrent as (typeof STREAK_MILESTONES)[number]
+  )
+    ? displayedCurrent
+    : null;
+
   return {
-    current,
-    best,
+    current: displayedCurrent,
+    best: displayedBest,
     aportedThisPeriod,
     inGrace,
     totalPeriodsWithAporte: periodsMet.size,
@@ -153,6 +288,9 @@ export function computeGoalStreak(
     currentPeriodAmount,
     currentPeriodRemaining,
     commitmentAmount: commitment,
+    recentPeriods,
+    currentPeriodEndsAt,
+    milestoneReached,
   };
 }
 
