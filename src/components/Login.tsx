@@ -202,39 +202,58 @@ export const Login: React.FC = () => {
               />
 
               {/* Monkey Circle */}
-              <div className="absolute left-1/2 top-1/2 z-10 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_16px_36px_rgba(32,45,30,0.08)]">
-                <img
-                  src="/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg"
-                  alt="Mona"
-                  className="h-full w-full object-cover mix-blend-multiply"
-                  style={{ objectPosition: 'center center' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }}
-                />
+              <div className={`absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_16px_36px_rgba(32,45,30,0.08)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${mode === 'signin' ? 'h-[62%] w-[62%]' : 'h-[88%] w-[88%]'}`}>
+                <AnimatePresence>
+                  <motion.img
+                    key={mode}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    src={mode === 'signin' ? "/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg" : "/Gemini_Generated_Image_xui4v6xui4v6xui4.png"}
+                    alt="Mona"
+                    className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
+                    style={{ objectPosition: 'center center' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </AnimatePresence>
               </div>
 
               {/* Floating Badges */}
-              <div className="absolute left-[-2%] top-[10%] z-20 flex h-[30%] w-[30%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/70 text-center backdrop-blur-md">
-                <span className="mb-2 text-[clamp(7px,1.2vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
-                  Seguridad<br />de elite
-                </span>
-                <Shield size={22} className="text-[#5A6E50]" strokeWidth={1.6} />
-              </div>
+              <AnimatePresence>
+                {mode === 'signin' && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute inset-0 z-20 pointer-events-none"
+                  >
+                    <div className="pointer-events-auto absolute left-[-2%] top-[10%] flex h-[30%] w-[30%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/70 text-center backdrop-blur-md">
+                      <span className="mb-2 text-[clamp(7px,1.2vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
+                        Seguridad<br />de elite
+                      </span>
+                      <Shield size={22} className="text-[#5A6E50]" strokeWidth={1.6} />
+                    </div>
 
-              <div className="absolute right-[-8%] top-[16%] z-20 flex h-[34%] w-[34%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/68 text-center backdrop-blur-md">
-                <span className="mb-2 text-[clamp(7px,1.15vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
-                  Panorama<br />financiero total
-                </span>
-                <BarChart size={34} className="text-[#5A6E50]" />
-              </div>
+                    <div className="pointer-events-auto absolute right-[-8%] top-[16%] flex h-[34%] w-[34%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/68 text-center backdrop-blur-md">
+                      <span className="mb-2 text-[clamp(7px,1.15vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
+                        Panorama<br />financiero total
+                      </span>
+                      <BarChart size={34} className="text-[#5A6E50]" />
+                    </div>
 
-              <div className="absolute bottom-[13%] right-[-2%] z-20 flex h-[29%] w-[29%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/68 text-center backdrop-blur-md">
-                <Star4 size={20} className="mb-2 text-[#5A6E50]" />
-                <span className="text-[clamp(7px,1.12vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
-                  IA financiera<br />predictiva
-                </span>
-              </div>
+                    <div className="pointer-events-auto absolute bottom-[13%] right-[-2%] flex h-[29%] w-[29%] flex-col items-center justify-center rounded-full border border-[#3C4A34]/10 bg-[#F0EDE4]/68 text-center backdrop-blur-md">
+                      <Star4 size={20} className="mb-2 text-[#5A6E50]" />
+                      <span className="text-[clamp(7px,1.12vw,10px)] font-black uppercase leading-tight tracking-[0.12em] text-[#202D1E]">
+                        IA financiera<br />predictiva
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               <Star4 size={24} className="absolute bottom-[18%] left-[10%] z-30 text-[#D5CCAA]" />
               <Star4 size={27} className="absolute bottom-[28%] right-[5%] z-30 text-[#5A6E50]" />
@@ -282,13 +301,20 @@ export const Login: React.FC = () => {
                 className="absolute left-1/2 top-1/2 h-[70%] w-[70%] -translate-x-[46%] -translate-y-[54%] rounded-[12px] opacity-90"
                 style={{ background: palette.sand }}
               />
-              <div className="absolute left-1/2 top-1/2 z-10 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_8px_20px_rgba(32,45,30,0.08)]">
-                <img
-                  src="/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg"
-                  alt="Mona"
-                  className="h-full w-full object-cover mix-blend-multiply"
-                  style={{ objectPosition: 'center center' }}
-                />
+              <div className={`absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-[#F5F3EC] shadow-[0_8px_20px_rgba(32,45,30,0.08)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${mode === 'signin' ? 'h-[62%] w-[62%]' : 'h-[88%] w-[88%]'}`}>
+                <AnimatePresence>
+                  <motion.img
+                    key={mode}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    src={mode === 'signin' ? "/WhatsApp Image 2026-05-12 at 11.56.02 AM.jpeg" : "/Gemini_Generated_Image_xui4v6xui4v6xui4.png"}
+                    alt="Mona"
+                    className="absolute inset-0 h-full w-full object-cover mix-blend-multiply"
+                    style={{ objectPosition: 'center center' }}
+                  />
+                </AnimatePresence>
               </div>
             </div>
           </div>
@@ -296,7 +322,7 @@ export const Login: React.FC = () => {
           {/* Form Content container */}
           <div className="w-full max-w-[360px] mx-auto">
             <h1 className="mb-1 text-[24px] sm:text-[28px] font-extrabold leading-tight tracking-[-0.035em] text-[#202D1E]">
-              {mode === 'signin' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
+              {mode === 'signin' ? 'Bienvenido a Mona' : 'Crea tu cuenta'}
             </h1>
             <p className="mb-6 sm:mb-8 text-[11px] sm:text-[12px] font-medium text-[#202D1E]/60">
               {mode === 'signin' ? 'Accede a tu panel financiero MONA.' : 'Únete a tu nuevo centro financiero.'}
