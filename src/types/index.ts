@@ -19,6 +19,8 @@ export interface UserSettings {
   theme: 'light' | 'dark';
   incomeCategories: string[];
   expenseCategories: string[];
+  /** Color de acento para los widgets y tablas (ej. 'sage', 'ocean') */
+  themeAccent?: string;
   categories?: string[]; // Deprecated, kept for backward compatibility and migration
   /** Presupuesto mensual por categoría (en la moneda activa). Falta = sin límite. */
   budgets?: Record<string, number>;

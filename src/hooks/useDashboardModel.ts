@@ -1,16 +1,5 @@
 import { useMemo } from 'react';
-import {
-  eachDayOfInterval,
-  eachMonthOfInterval,
-  format,
-  isSameDay,
-  isSameMonth,
-  isSameYear,
-  parseISO,
-  startOfMonth,
-  startOfYear,
-  subMonths,
-} from 'date-fns';
+import { format, parseISO, isSameDay, isSameMonth, isSameYear, startOfMonth, endOfMonth, startOfYear, eachDayOfInterval, eachMonthOfInterval, subMonths, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useFinance } from '../context/FinanceContext';
 
@@ -148,14 +137,24 @@ function buildFlowData(
     return eachMonthOfInterval({ start: startOfMonth(dates[0]), end: startOfMonth(dates[dates.length - 1]) }).map((month) => {
       const monthTransactions = transactions.filter((t) => isSameMonth(parseISO(t.date), month));
       return {
-        day: format(month, 'MMM yy', { locale: es }).replace(/\./g, ''),
+        day: format(month, 'MMM yyyy', { locale: es }).replace(/\./g, ''),
         entrada: sumByType(monthTransactions, 'income'),
         salida: sumByType(monthTransactions, 'expense'),
       };
     });
   }
 
-  return eachDayOfInterval({ start: startOfMonth(today), end: today }).map((day) => {
+  // Mostramos el mes calendario completo. Si el día es futuro, retornamos valores undefined
+  // para que Recharts corte la línea en el día actual y no caiga a 0.
+  return eachDayOfInterval({ start: startOfMonth(today), end: endOfMonth(today) }).map((day) => {
+    if (day > today) {
+      return {
+        day: format(day, 'd MMM', { locale: es }).replace(/\./g, ''),
+        // Usamos null para que la línea se corte
+        entrada: null,
+        salida: null,
+      };
+    }
     const dayTransactions = transactions.filter((t) => isSameDay(parseISO(t.date), day));
     return {
       day: format(day, 'd MMM', { locale: es }).replace(/\./g, ''),

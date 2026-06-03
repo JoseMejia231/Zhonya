@@ -75,9 +75,10 @@ service cloud.firestore {
       return hasRequiredFields(['currency', 'theme']) &&
              // Must have either legacy 'categories' or new split fields
              ('categories' in data || ('incomeCategories' in data && 'expenseCategories' in data)) &&
-             hasOnlyAllowedFields(['currency', 'theme', 'categories', 'incomeCategories', 'expenseCategories', 'budgets', 'hideBalance']) &&
+             hasOnlyAllowedFields(['currency', 'theme', 'themeAccent', 'categories', 'incomeCategories', 'expenseCategories', 'budgets', 'hideBalance']) &&
              data.currency is string && data.currency.size() > 0 && data.currency.size() < 10 &&
              data.theme in ['light', 'dark'] &&
+             (!('themeAccent' in data) || (data.themeAccent is string && data.themeAccent.size() < 20)) &&
              (!('categories' in data) || (data.categories is list && data.categories.size() < 50)) &&
              (!('incomeCategories' in data) || (data.incomeCategories is list && data.incomeCategories.size() < 50)) &&
              (!('expenseCategories' in data) || (data.expenseCategories is list && data.expenseCategories.size() < 50)) &&

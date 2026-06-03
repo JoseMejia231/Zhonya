@@ -5,6 +5,7 @@ import { Plus, Minus, Check, ChevronDown, Calendar, FileText, X } from 'lucide-r
 import { cn, formatCurrency } from '../utils';
 import { success } from '../utils/haptics';
 import { motion, AnimatePresence } from 'motion/react';
+import { Card } from './ui/Card';
 
 const CURRENCIES = ['DOP', 'USD', 'EUR', 'MXN'] as const;
 
@@ -214,7 +215,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
   };
 
   return (
-    <div className="bg-white p-5 sm:p-7 rounded-[32px] border border-zinc-200/60 shadow-sm relative overflow-hidden transition-all duration-300">
+    <Card className="!p-5 sm:!p-7">
       {/* Decorative Warm Accent Header background element */}
       <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-transparent via-[var(--color-brand)] to-transparent opacity-60" />
 
@@ -620,6 +621,6 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose }) => 
           )}
         </motion.button>
       </form>
-    </div>
+    </Card>
   );
 };

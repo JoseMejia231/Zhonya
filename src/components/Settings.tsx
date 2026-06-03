@@ -339,6 +339,32 @@ export const Settings: React.FC = () => {
                   />
                 </div>
               </Section>
+
+              <Section title="Color de Acento" subtitle="Personaliza el color de fondo de los widgets y tablas.">
+                <div className="flex flex-wrap items-center gap-3">
+                  {[
+                    { id: 'sage', label: 'Verde Salvia', bg: 'bg-emerald-100 dark:bg-emerald-900/40', border: 'border-emerald-300', dot: 'bg-emerald-600' },
+                    { id: 'ocean', label: 'Azul Océano', bg: 'bg-blue-100 dark:bg-blue-900/40', border: 'border-blue-300', dot: 'bg-blue-600' },
+                    { id: 'terracotta', label: 'Terracota', bg: 'bg-orange-100 dark:bg-orange-900/40', border: 'border-orange-300', dot: 'bg-orange-600' },
+                    { id: 'charcoal', label: 'Carbón', bg: 'bg-zinc-200 dark:bg-zinc-800', border: 'border-zinc-400', dot: 'bg-zinc-700' },
+                    { id: 'rose', label: 'Rosado', bg: 'bg-rose-100 dark:bg-rose-900/40', border: 'border-rose-300', dot: 'bg-rose-600' },
+                  ].map(theme => (
+                    <button
+                      key={theme.id}
+                      onClick={() => updateSettings({ themeAccent: theme.id })}
+                      className={cn(
+                        'flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all active:scale-95',
+                        settings.themeAccent === theme.id || (!settings.themeAccent && theme.id === 'sage')
+                          ? `border-zinc-900 dark:border-white shadow-md ${theme.bg}`
+                          : `border-transparent bg-zinc-50 dark:bg-zinc-900/50 hover:${theme.bg} hover:${theme.border}`
+                      )}
+                    >
+                      <span className={cn("w-3 h-3 rounded-full shadow-sm", theme.dot)} />
+                      <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{theme.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </Section>
             </div>
           )}
 

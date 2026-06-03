@@ -93,6 +93,7 @@ export const DEFAULT_EXPENSE_CATEGORIES = ['Comida', 'Transporte', 'Entretenimie
 const DEFAULT_SETTINGS: UserSettings = {
   currency: 'DOP',
   theme: 'light',
+  themeAccent: 'sage',
   incomeCategories: DEFAULT_INCOME_CATEGORIES,
   expenseCategories: DEFAULT_EXPENSE_CATEGORIES,
 };
@@ -224,11 +225,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     latestTransactionsRef.current = state.transactions;
   }, [state.transactions]);
 
+  useEffect(() => {
+    const accent = state.settings.themeAccent
+      || localStorage.getItem('mona_themeAccent')
+      || 'sage';
+    document.documentElement.setAttribute('data-theme-accent', accent);
+  }, [state.settings.themeAccent]);
+
   const buildSettingsPayload = (settings: UserSettings) => {
     const allCats = [...(settings.incomeCategories || []), ...(settings.expenseCategories || [])];
     const payload: Record<string, unknown> = {
       currency: settings.currency || DEFAULT_SETTINGS.currency,
       theme: settings.theme || DEFAULT_SETTINGS.theme,
+      themeAccent: settings.themeAccent || DEFAULT_SETTINGS.themeAccent,
       categories: allCats,
       incomeCategories: settings.incomeCategories || [],
       expenseCategories: settings.expenseCategories || [],
@@ -685,15 +694,19 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await setDoc(settingsRef, payload);
     } catch (err) {
-      // Mismo escenario que setTransactionDoc: si las rules viejas no conocen
-      // hideBalance, lo reintentamos sin él. El estado local conserva el toggle.
-      if (isPermissionDenied(err) && 'hideBalance' in payload) {
-        const { hideBalance: _omit, ...safePayload } = payload;
+      // Si las rules no conocen hideBalance o themeAccent, los quitamos del
+      // payload y reintentamos. El estado local conserva ambos valores.
+      if (isPermissionDenied(err)) {
+        const { hideBalance: _hb, themeAccent: _ta, ...safePayload } = payload;
         try {
           await setDoc(settingsRef, safePayload);
           console.warn(
-            '[MONA] Firestore rules rejected settings.hideBalance. Persisted other settings; deploy firestore.rules to enable.'
+            '[MONA] Firestore rules rejected new settings fields (hideBalance/themeAccent). Persisted other settings; deploy firestore.rules to enable full persistence.'
           );
+          // Guardar themeAccent en localStorage como respaldo
+          if (merged.themeAccent) {
+            localStorage.setItem('mona_themeAccent', merged.themeAccent);
+          }
           return;
         } catch (retryErr) {
           showError('No se pudo guardar la configuración', retryErr);
