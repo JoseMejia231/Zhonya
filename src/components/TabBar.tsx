@@ -77,7 +77,7 @@ interface SidebarProps extends TabBarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, onToggleCollapse }) => (
   <aside
     className={cn(
-      'hidden sm:flex flex-col sticky top-0 h-screen overflow-hidden bg-white/90 backdrop-blur-xl border-r border-zinc-200/60 py-4 transition-all duration-300 ease-out',
+      'hidden sm:flex flex-col sticky top-0 h-screen overflow-hidden bg-white/90 dark:bg-[#121d19]/90 backdrop-blur-xl border-r border-zinc-200/60 dark:border-white/10 py-4 transition-all duration-300 ease-out',
       collapsed ? 'w-[92px] px-3' : 'w-[252px] px-5'
     )}
   >
@@ -90,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, o
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200/70 bg-white shadow-sm">
         <MonaMark size={40} />
       </div>
-      {!collapsed && <h1 className="text-xl font-bold tracking-[0.08em] text-[#7c6744]">MONA</h1>}
+      {!collapsed && <h1 className="text-xl font-bold tracking-[0.08em] text-[#7c6744] dark:text-[var(--color-brand)]">MONA</h1>}
     </div>
 
     <nav className="flex-1 space-y-2">
@@ -108,14 +108,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, o
               'relative w-full cursor-pointer rounded-2xl text-xs font-bold uppercase tracking-[0.16em] transition-all focus:outline-none',
               collapsed ? 'flex h-12 items-center justify-center px-0' : 'flex items-center gap-3 px-4 py-3',
               isActive
-                ? 'bg-[#eef6f4] text-zinc-700 shadow-[0_10px_24px_rgba(27,31,35,0.05)]'
-                : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+                ? 'bg-[#eef6f4] dark:bg-[var(--color-action)]/12 text-zinc-700 dark:text-[var(--color-action)] shadow-[0_10px_24px_rgba(27,31,35,0.05)] dark:shadow-[0_12px_26px_rgba(0,0,0,0.18)]'
+                : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-600 dark:hover:text-zinc-700'
             )}
           >
             <Icon size={18} strokeWidth={2.2} />
             {!collapsed && <span>{tab.label}</span>}
             {!collapsed && isActive && tab.id === 'overview' && (
-              <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[#2f5a29] shadow-sm">
+              <span className="ml-auto inline-flex min-w-6 items-center justify-center rounded-full bg-white dark:bg-[var(--color-action)] px-2 py-0.5 text-[10px] font-bold text-[#2f5a29] dark:text-[#0b1411] shadow-sm">
                 1
               </span>
             )}
@@ -124,14 +124,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, o
       })}
     </nav>
 
-    <div className="mt-auto space-y-2 border-t border-zinc-100 pt-5">
+    <div className="mt-auto space-y-2 border-t border-zinc-100 dark:border-white/10 pt-5">
       <button
         type="button"
         title={collapsed ? 'Expandir' : 'Colapsar'}
         aria-label={collapsed ? 'Expandir barra lateral' : 'Colapsar barra lateral'}
         onClick={onToggleCollapse}
         className={cn(
-          'w-full rounded-2xl text-xs font-bold uppercase tracking-[0.16em] text-zinc-400 transition-all hover:bg-zinc-50 hover:text-zinc-600',
+          'w-full rounded-2xl text-xs font-bold uppercase tracking-[0.16em] text-zinc-400 transition-all hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-600 dark:hover:text-zinc-700',
           collapsed ? 'flex items-center justify-center px-0 py-3' : 'flex items-center gap-3 px-4 py-3'
         )}
       >
@@ -149,8 +149,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ active, onChange, collapsed, o
           'w-full rounded-2xl text-xs font-bold uppercase tracking-[0.16em] transition-all',
           collapsed ? 'flex items-center justify-center px-0 py-3' : 'flex items-center gap-3 px-4 py-3',
           active === 'settings'
-            ? 'bg-[#eef6f4] text-zinc-700 shadow-[0_10px_24px_rgba(27,31,35,0.05)]'
-            : 'text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600'
+            ? 'bg-[#eef6f4] dark:bg-[var(--color-action)]/12 text-zinc-700 dark:text-[var(--color-action)] shadow-[0_10px_24px_rgba(27,31,35,0.05)]'
+            : 'text-zinc-400 hover:bg-zinc-50 dark:hover:bg-white/5 hover:text-zinc-600 dark:hover:text-zinc-700'
         )}
       >
         <SettingsIcon size={18} strokeWidth={2.2} />
@@ -166,7 +166,7 @@ export const DesktopTabs: React.FC<TabBarProps> = ({ active, onChange }) => (
   <nav
     role="tablist"
     aria-label="Secciones"
-    className="hidden sm:flex items-center gap-0.5 p-1 bg-white border border-zinc-200/70 rounded-2xl shadow-sm"
+    className="hidden sm:flex items-center gap-0.5 p-1 bg-white border border-zinc-200/70 dark:border-white/10 rounded-2xl shadow-sm"
   >
     {TABS.map((tab) => {
       const Icon = tab.icon;
@@ -213,7 +213,7 @@ export const WheelBubble: React.FC<TabBarProps> = ({ active, onChange }) => {
       className={cn(
         'sm:hidden inline-flex items-center justify-center min-w-[40px] min-h-[40px] w-10 h-10 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 shrink-0',
         isActive
-          ? 'bg-zinc-900 text-white shadow-lg shadow-black/20'
+              ? 'bg-zinc-900 dark:bg-[var(--color-action)] text-white dark:text-[#0b1411] shadow-lg shadow-black/20'
           : 'bg-white text-zinc-900 border border-zinc-200/70 shadow-sm hover:bg-zinc-50 active:scale-95'
       )}
     >
@@ -230,7 +230,7 @@ export const MobileBottomNav: React.FC<TabBarProps> = ({ active, onChange }) => 
   <nav
     role="tablist"
     aria-label="Navegación principal"
-    className="sm:hidden fixed inset-x-0 bottom-0 z-40 bg-white/85 backdrop-blur-xl border-t border-zinc-200/70 pb-[env(safe-area-inset-bottom)]"
+    className="sm:hidden fixed inset-x-0 bottom-0 z-40 bg-white/85 dark:bg-[#121d19]/88 backdrop-blur-xl border-t border-zinc-200/70 dark:border-white/10 pb-[env(safe-area-inset-bottom)]"
   >
     <div className="grid grid-cols-5 px-1.5 pt-1.5">
       {MOBILE_TABS.map((tab) => {
@@ -246,8 +246,8 @@ export const MobileBottomNav: React.FC<TabBarProps> = ({ active, onChange }) => 
             className={cn(
               'relative flex flex-col items-center justify-center gap-1 py-2.5 min-h-[64px] rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 cursor-pointer transition-colors',
               isActive
-                ? 'text-zinc-900'
-                : 'text-zinc-400 hover:text-zinc-700 active:bg-zinc-100/60'
+                ? 'text-zinc-900 dark:text-[var(--color-action)]'
+                : 'text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-700 active:bg-zinc-100/60 dark:active:bg-white/5'
             )}
           >
             <span className="relative flex items-center justify-center w-12 h-7">
@@ -255,14 +255,14 @@ export const MobileBottomNav: React.FC<TabBarProps> = ({ active, onChange }) => 
                 <motion.span
                   layoutId="mobile-tab-pill"
                   aria-hidden
-                  className="absolute inset-0 rounded-full bg-zinc-900"
+                  className="absolute inset-0 rounded-full bg-zinc-900 dark:bg-[var(--color-action)]"
                   transition={{ type: 'spring', stiffness: 420, damping: 36 }}
                 />
               )}
               <Icon
                 size={20}
                 strokeWidth={isActive ? 2.4 : 2}
-                className={cn('relative z-10', isActive && 'text-white')}
+                className={cn('relative z-10', isActive && 'text-white dark:text-[#0b1411]')}
               />
             </span>
             <span

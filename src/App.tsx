@@ -115,13 +115,13 @@ function AppContent() {
       />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-30 bg-zinc-50/80 backdrop-blur-xl pt-[env(safe-area-inset-top)] border-b border-zinc-200/50">
+        <header className="sticky top-0 z-30 bg-zinc-50/80 dark:bg-[#13201c]/86 backdrop-blur-xl pt-[env(safe-area-inset-top)] border-b border-zinc-200/50 dark:border-white/10">
           <div className="max-w-[1580px] mx-auto px-4 sm:px-8 py-4 sm:py-6 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-sm font-bold uppercase tracking-[0.32em] text-zinc-400 mb-1">
                 {dateLabel}
               </p>
-              <h1 className="text-2xl sm:text-[32px] font-semibold tracking-tight text-emerald-900">
+              <h1 className="text-2xl sm:text-[32px] font-semibold tracking-tight text-emerald-900 dark:text-[#eaf7ef]">
                 Hola, {greetingName}
               </h1>
             </div>
@@ -131,7 +131,7 @@ function AppContent() {
                 type="button"
                 aria-label="Configuración"
                 onClick={() => setTab('settings')}
-                className="sm:hidden inline-flex items-center justify-center min-w-[40px] min-h-[40px] w-10 h-10 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 shrink-0 bg-white text-zinc-900 border border-zinc-200/70 shadow-sm hover:bg-zinc-50 active:scale-95"
+                className="sm:hidden inline-flex items-center justify-center min-w-[40px] min-h-[40px] w-10 h-10 rounded-full transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/30 dark:focus-visible:ring-white/30 shrink-0 bg-white text-zinc-900 border border-zinc-200/70 shadow-sm hover:bg-zinc-50 active:scale-95"
               >
                 <SettingsIcon size={18} strokeWidth={2.2} />
               </button>
@@ -195,7 +195,7 @@ function AppContent() {
         </AnimatePresence>
         </main>
 
-        <footer className="hidden sm:flex max-w-[1580px] w-full mx-auto px-8 py-6 border-t border-zinc-200/50 items-center justify-between text-sm font-mono uppercase tracking-[0.2em] text-zinc-400">
+        <footer className="hidden sm:flex max-w-[1580px] w-full mx-auto px-8 py-6 border-t border-zinc-200/50 dark:border-white/10 items-center justify-between text-sm font-mono uppercase tracking-[0.2em] text-zinc-400">
           <span>© {today.getFullYear()} MONA</span>
           <span className="flex items-center gap-1.5">
             <span className="w-1 h-1 rounded-full bg-emerald-500" />
@@ -290,8 +290,8 @@ const AnalysisSection: React.FC = () => {
               className={cn(
                 'px-6 py-2.5 rounded-2xl text-sm font-bold uppercase tracking-[0.3em] transition-all duration-300',
                 period === f.id
-                  ? 'bg-[#2f5a29] text-white shadow-[0_12px_24px_rgba(47,90,41,0.25)] scale-105'
-                  : 'bg-white/60 backdrop-blur-md border border-[#e7dfd1] text-[#7c7361] hover:bg-white hover:shadow-md'
+                  ? 'bg-[#2f5a29] dark:bg-[var(--color-action)] text-white dark:text-[#0b1411] shadow-[0_12px_24px_rgba(47,90,41,0.25)] dark:shadow-[0_12px_24px_rgba(102,217,129,0.18)] scale-105'
+                  : 'bg-white/60 dark:bg-white/60 backdrop-blur-md border border-[#e7dfd1] dark:border-white/10 text-[#7c7361] dark:text-zinc-500 hover:bg-white hover:shadow-md'
               )}
             >
               {f.label}

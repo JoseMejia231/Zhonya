@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   eachDayOfInterval,
   eachMonthOfInterval,
@@ -46,10 +46,10 @@ import { useDashboardModel, type AnalysisPeriod } from '../hooks/useDashboardMod
 export type { AnalysisPeriod };
 
 const SURFACES = {
-  dark: 'rounded-[32px] bg-emerald-800 dark:bg-emerald-900 premium-shadow border border-white/5',
-  card: 'rounded-[32px] border border-zinc-200/70 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900 glass-surface premium-shadow transition-all duration-300 hover:shadow-lg hover:-translate-y-1',
-  soft: 'rounded-[32px] border border-zinc-200 dark:border-zinc-800 bg-zinc-100/80 dark:bg-zinc-800 glass-surface premium-shadow transition-all duration-300 hover:shadow-lg hover:-translate-y-1',
-  night: 'rounded-[32px] bg-zinc-950 dark:bg-black premium-shadow border border-white/5',
+  dark: 'rounded-[32px] bg-emerald-800 dark:bg-[#173d2d] premium-shadow border border-white/5 dark:border-white/10',
+  card: 'rounded-[32px] border border-zinc-200/70 dark:border-white/10 bg-white/70 dark:bg-[#17231f]/86 glass-surface premium-shadow transition-all duration-300 hover:shadow-lg hover:-translate-y-1',
+  soft: 'rounded-[32px] border border-zinc-200 dark:border-white/10 bg-zinc-100/80 dark:bg-[#1d2b26]/88 glass-surface premium-shadow transition-all duration-300 hover:shadow-lg hover:-translate-y-1',
+  night: 'rounded-[32px] bg-zinc-950 dark:bg-[#0d1714] premium-shadow border border-white/5 dark:border-white/10',
 };
 
 function formatShortDate(date: string) {
@@ -604,6 +604,80 @@ export const CategoryBreakdown: React.FC<{ period?: AnalysisPeriod }> = ({ perio
     </motion.div>
   );
 };
+
+// ---------- Componente de depuración de transacciones ----------
+/**
+ * Muestra las transacciones del usuario autenticado en la consola y en la UI.
+ * Útil para inspeccionar datos y detectar valores de `amount` problemáticos.
+ */
+export const TransactionDebug: React.FC = () => {
+  const { transactions, settings } = useFinance();
+  const [show, setShow] = useState(false);
+
+  // Loguear en la consola cuando se muestra el panel
+  useEffect(() => {
+    if (show) {
+      console.log('🛠️ Transacciones debug:', transactions);
+    }
+  }, [show, transactions]);
+
+  const toggle = () => setShow((v) => !v);
+
+  if (!show) {
+    return (
+      <div className="mt-4 flex justify-center">
+        <button
+          onClick={toggle}
+          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 transition-colors"
+        >
+          Mostrar depuración de transacciones
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={cn(SURFACES.card, 'p-6 overflow-auto max-h-96')}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold tracking-tight num text-[#4b5741]">Depuración de Transacciones</h2>
+        <button
+          onClick={toggle}
+          className="text-sm font-semibold text-emerald-600 hover:underline"
+        >
+          Ocultar
+        </button>
+      </div>
+      <table className="w-full table-auto text-sm">
+        <thead>
+          <tr className="bg-[#f3f1ea] font-bold">
+            <th className="p-2 text-left">ID</th>
+            <th className="p-2 text-left">Fecha</th>
+            <th className="p-2 text-left">Tipo</th>
+            <th className="p-2 text-left">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((t) => (
+            <tr key={t.id} className="border-b border-[#efe8da]">
+              <td className="p-2 break-all">{t.id}</td>
+              <td className="p-2">{formatShortDate(t.date)}</td>
+              <td className="p-2 capitalize">{t.type}</td>
+              <td className="p-2 font-bold num">
+                {t.type === 'income' ? '+' : '-'}{formatMoney(t.amount, settings.currency || 'USD')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </motion.div>
+  );
+};
+
 
 const EmptyAnalyticState: React.FC<{ title: string; description: string }> = ({ title, description }) => (
   <div className="flex min-h-[180px] flex-col items-center justify-center rounded-[24px] border border-dashed border-[#e4dccd] bg-white/35 px-6 py-8 text-center">
