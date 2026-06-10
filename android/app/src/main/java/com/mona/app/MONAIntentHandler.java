@@ -75,10 +75,19 @@ public final class MONAIntentHandler {
             return MONACommand.viewSummary();
         }
 
-        if (containsAny(normalized, "gasto", "gaste", "movimiento", "transaccion", "registrar", "registra", "guardar", "agregar", "anota")) {
+        if (containsAny(normalized, "gasto", "gaste", "movimiento", "transaccion", "registrar", "registra", "agrega", "agregar", "anota", "anote", "ingresa", "ingresar", "puse", "poner", "paga", "pague")) {
             String amount = extractAmount(normalized);
             String category = extractKnownCategory(normalized);
-            if (TextUtils.isEmpty(category)) category = extractCategory(normalized);
+            if (TextUtils.isEmpty(category)) {
+                String cleanedText = normalized;
+                if (!TextUtils.isEmpty(amount)) {
+                    cleanedText = cleanedText.replace(amount, "");
+                }
+                cleanedText = cleanedText
+                    .replaceAll("\\b(?:pesos|peso|dolares|dolar|dólares|dólar|euros|euro|rd|usd|cur)\\b", "")
+                    .replaceAll("\\s+", " ").trim();
+                category = extractCategory(cleanedText);
+            }
             return MONACommand.recordExpense(amount, category, original);
         }
 
@@ -159,6 +168,14 @@ public final class MONAIntentHandler {
     private static MONACommand recordExpense(Intent intent) {
         String amount = firstNonEmpty(readExtra(intent, EXTRA_AMOUNT), readExtra(intent, "monaAmount"));
         String category = firstNonEmpty(readExtra(intent, EXTRA_CATEGORY), readExtra(intent, "monaCategory"));
+        if (!TextUtils.isEmpty(category)) {
+            String known = extractKnownCategory(normalize(category));
+            if (!TextUtils.isEmpty(known)) {
+                category = known;
+            } else {
+                category = toTitleCase(category);
+            }
+        }
         String description = firstNonEmpty(
             readExtra(intent, EXTRA_DESCRIPTION),
             readExtra(intent, "monaDescription"),
@@ -183,15 +200,15 @@ public final class MONAIntentHandler {
 
     // MONA - OS Integration
     private static String extractKnownCategory(String text) {
-        if (text.contains("comida") || text.contains("almuerzo") || text.contains("cena")) return "Comida";
-        if (text.contains("transporte") || text.contains("taxi") || text.contains("uber") || text.contains("pasaje") || text.contains("guagua") || text.contains("metro")) {
+        if (text.contains("comida") || text.contains("almuerzo") || text.contains("cena") || text.contains("desayuno") || text.contains("cafe") || text.contains("restaurante") || text.contains("delivery") || text.contains("antojo")) return "Comida";
+        if (text.contains("transporte") || text.contains("taxi") || text.contains("uber") || text.contains("pasaje") || text.contains("guagua") || text.contains("metro") || text.contains("gasolina") || text.contains("combustible") || text.contains("peaje") || text.contains("carro") || text.contains("mototaxi")) {
             return "Transporte";
         }
-        if (text.contains("entretenimiento") || text.contains("cine")) return "Entretenimiento";
-        if (text.contains("salud") || text.contains("medicina") || text.contains("farmacia")) return "Salud";
-        if (text.contains("compra") || text.contains("compras") || text.contains("colmado") || text.contains("super")) return "Compras";
-        if (text.contains("servicio") || text.contains("servicios")) return "Servicios";
-        if (text.contains("hormiga") || text.contains("snack") || text.contains("agua") || text.contains("botella")) return "Otros Gastos";
+        if (text.contains("entretenimiento") || text.contains("cine") || text.contains("salida") || text.contains("fiesta") || text.contains("suscripcion") || text.contains("netflix") || text.contains("spotify") || text.contains("juego") || text.contains("juegos") || text.contains("bar") || text.contains("cerveza") || text.contains("discoteca")) return "Entretenimiento";
+        if (text.contains("salud") || text.contains("medicina") || text.contains("farmacia") || text.contains("doctor") || text.contains("dentista") || text.contains("consulta") || text.contains("clinica") || text.contains("hospital") || text.contains("remedio")) return "Salud";
+        if (text.contains("compra") || text.contains("compras") || text.contains("colmado") || text.contains("super") || text.contains("supermercado") || text.contains("tienda") || text.contains("ropa") || text.contains("zapatos") || text.contains("mall")) return "Compras";
+        if (text.contains("servicio") || text.contains("servicios") || text.contains("luz") || text.contains("agua") || text.contains("internet") || text.contains("telefono") || text.contains("cable") || text.contains("alquiler") || text.contains("renta") || text.contains("gas")) return "Servicios";
+        if (text.contains("hormiga") || text.contains("snack") || text.contains("agua") || text.contains("botella") || text.contains("propina") || text.contains("regalo") || text.contains("donacion")) return "Otros Gastos";
         return "";
     }
 

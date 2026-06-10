@@ -99,4 +99,17 @@
         </capability-binding>
         <capability-binding android:key="custom.actions.intent.RECORD_MONA_EXPENSE" />
     </shortcut>
+
+    <!-- // MONA - OS Integration -->
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mona_shortcut"
+        android:shortcutId="activate_voice"
+        android:shortcutLongLabel="Asistente de Voz"
+        android:shortcutShortLabel="Hablar">
+        <intent
+            android:action="com.mona.app.action.ACTIVATE_VOICE"
+            android:targetClass="com.mona.app.MONAVoiceActivator"
+            android:targetPackage="com.mona.app" />
+    </shortcut>
 </shortcuts>
